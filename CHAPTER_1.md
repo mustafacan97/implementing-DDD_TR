@@ -334,3 +334,304 @@ Bunu **anemiye bağlı bellek kaybı** olarak adlandıralım. Bu, bu tür örtü
 > Takipte kalın, çünkü beyaz tahtadaki fikirleri nasıl alıp sizin için çalışır hale getireceğinizi öğreneceksiniz.
 
 Artık bu tür bir kod hakkında endişelenmeniz gerektiğini ve daha iyi bir tasarım oluşturmak için nasıl bir yol izleyeceğinizi anlamış olmalısınız. İyi haber şu ki, **kodu tasarımı açıkça ve dikkatle oluşturmakta başarılı olabilirsiniz.**
+
+
+## **DDD Nasıl Yapılır**
+
+Bir an için yoğun implementasyon tartışmalarından uzaklaşalım ve DDD'nin en güçlendirici özelliklerinden birini, **Ubiquitos Language** (Evrensel Dil)'i gözden geçirelim. Bu, DDD'nin iki temel dayanağından biridir, diğer dayanak ise Bounded Context Sınırlı Bağlam (2) olup, biri diğerinin doğru bir şekilde var olabilmesi için gereklidir.
+
+> **Bir Bağlamdaki Terimler**
+> 
+> Şimdilik, Sınırlı Bağlam'ı, bir uygulama veya belirli bir sistem etrafında bir kavramsal sınır olarak düşünün. Bu sınırın amacı, verilen bir domain terimi, ifadesi veya cümlesinin—Evrensel Dil—sınır içindeki her kullanımının belirli bir bağlamsal anlamı olduğuna dikkat çekmektir. O terimin sınır dışında kullanımı, farklı bir anlam taşıyor olabilir ve muhtemelen öyledir. Bölüm 2, Sınırlı Bağlam'ı derinlemesine açıklar.
+
+**_Ubiquitos Language_**
+
+**Evrensel Dil**, paylaşılan bir takım dilidir. Hem domain uzmanları hem de geliştiriciler tarafından kullanılır. Aslında, proje ekibindeki herkes tarafından paylaşılır. Takımda hangi rolde olursanız olun, proje ekibinde yer alıyorsanız, projeye ait **Evrensel Dil**i kullanırsınız.  
+  
+**Peki, Evrensel Dilin Ne Olduğunu Düşünüyorsunuz?**
+
+Açıkça söylemek gerekirse, bir işin dili olmalıdır. Kesinlikle endüstri standart terminolojisini benimsemek olmalı. **Hayır, aslında öyle değil.** Tabii ki, domain uzmanlarının kullandığı jargon olmalı. **Üzgünüm, ama hayır.**
+
+**Evrensel Dil**, takım tarafından geliştirilen paylaşılan bir dildir—hem domain uzmanları hem de yazılım geliştiricilerden oluşan bir takım tarafından. İşte bu kadar. Şimdi anladınız!
+
+Doğal olarak, domain uzmanları dil üzerinde güçlü bir etkiye sahiptir çünkü işin o kısmını en iyi onlar bilir ve endüstri standartlarından etkilenmiş olabilirler. Ancak, Dil, daha çok işin kendisinin nasıl düşündüğü ve nasıl işlediği üzerine odaklanır. Ayrıca, çoğu zaman iki veya daha fazla domain uzmanı kavramlar ve terimler üzerinde anlaşmazlık yaşar, ve bazıları aslında her durumu düşünmedikleri için yanılabilir. Bu yüzden uzmanlar ve geliştiriciler birlikte çalışarak domainin bir modelini oluştururken, hem fikir olma ve uzlaşma yoluyla projeye en uygun **Dil**i ortaya koyarlar. Takım, **Dil**in kalitesinden asla ödün vermez, sadece en iyi kavramlar, terimler ve anlamlar konusunda uzlaşır. İlk uzlaşı, son nokta değildir. **Dil**, küçük ve büyük keşifler yapıldıkça zamanla büyür ve değişir, tıpkı başka herhangi bir yaşayan dil gibi.
+
+Bu, geliştiricilerin domain uzmanlarıyla aynı sayfada olmalarını sağlamak için bir numara değildir. Bu, geliştiricilere zorla iş jargonunu dayatmak da değildir. Gerçekten, tüm ekip tarafından oluşturulan bir dildir—domain uzmanları, geliştiriciler, iş analistleri ve sistemi üretmeye dahil olan herkes tarafından. **Dil**, başlangıçta domain uzmanlarının doğal jargonuyla başlayabilir, ancak bununla sınırlı değildir çünkü **Dil** zamanla büyümelidir. Şunu söylemek yeterlidir ki, birden fazla domain uzmanı **Dil**i oluştururken yer yer terimler ve anlamlar hakkında hafif anlaşmazlıklar yaşayabilir.
+
+Aşağıdaki tabloda, sadece grip aşılarının yönetimini kodla modellemekle kalmaz, ekip aynı zamanda **Dil**i açıkça konuşmalıdır. Ekip bu modelin bu yönünü tartışırken, "Hemşireler, hastalara standart dozlarda grip aşısı yapar" gibi ifadeler kullanırlar.
+
+Uzmanların zihnindeki mevcut **Dil**le oradan gelişen **Dil** arasında bazı pazarlıklar ve çekişmeler olacaktır. Bu, uzun süre önemli olacak en iyi **Dil**i geliştirme sürecinin doğal bir parçasıdır. Bu, açık tartışmalar, mevcut belgeleri gözden geçirme, nihayet gün yüzüne çıkan iş bilgisi ve ayrıca standartlar, sözlükler ve eşanlamlılar kullanarak yapılır. Bir noktada, bazı kelimelerin ve ifadelerin iş bağlamına eskisi kadar uygun olmadığını kabul ederiz ve başka bazı kelimelerin çok daha iyi uyduğunu fark ederiz.
+
+**İş için hangisi daha iyidir?  
+İkinci ve üçüncü ifadeler benzer olsa da, kod nasıl tasarlanmalıdır?**
+
+| Olası Görüşler | Ortaya Çıkan Kod  |
+| -------------- |-------------------|
+| "Kim umursar? Sadece yazalım." <br> Ehh, bu hiç de yakın değil. | `patient.setShotType(ShotTypes.TYPE_FLU);` `patient.setDose(dose);` <br>`patient.setNurse(nurse);` |
+| "Biz, hastalara grip aşıları yapıyoruz." <br> Daha iyi, ancak bazı önemli kavramları kaçırıyor. | `patient.giveFluShot();` |
+| "Hemşireler, hastalara standart dozlarda grip aşıları yapar." <br> Bu, şu anda ilerlemek isteyeceğimiz şey gibi görünüyor, en azından daha fazla şey öğrenene kadar. | `Vaccine vaccine = vaccines.standardAdultFluDose();` <br> `nurse.administerFluVaccine(patient, vaccine);` |
+
+Peki, bu çok önemli Ubiquitous Language'ı nasıl yakalarsınız? İşte deneyimlerin ilerledikçe gelişmeye yol açan bazı yollar:
+
+* Fiziksel ve kavramsal alanın resimlerini çizin ve bunları adlar ve eylemlerle etiketleyin. Bu çizimler çoğunlukla gayri resmi olacaktır, ancak bazı yönleri formel yazılım modellemeyi içerebilir. Takımınız Unified Modeling Language (UML) gibi bazı formel modellemeler yapsa da, tartışmaları engelleyecek ve nihai dilin yaratıcılığını kısıtlayacak herhangi bir seremoniden kaçınmak istersiniz.
+
+* Basit tanımlarla bir terimler sözlüğü oluşturun. Alternatif terimleri listeleyin, işe yarayanları ve işe yaramayanları dahil edin ve nedenlerini belirtin. Tanımlar ekledikçe, alan dilinde yazmak zorunda olduğunuz için dilin yeniden kullanılabilir ifadelerini geliştirmekten kaçamazsınız.
+
+* Eğer bir sözlük fikrini sevmediyseniz, yine de önemli yazılım kavramlarının gayri resmi çizimlerini içeren bir tür dokümantasyon oluşturun. Buradaki amaç, ek dil terimlerinin ve ifadelerinin yüzeye çıkmasını sağlamaktır.
+
+* Sözlük veya diğer yazılı belgeleri sadece bir veya birkaç takım üyesi yakalayabilir, bu yüzden sonucu gözden geçirmek için geri dönün ve takımın geri kalanıyla tartışın. Yakaladığınız tüm dilsel terimler üzerinde her zaman, hatta hiç anlaşamayabilirsiniz, bu yüzden çevik olun ve düzenlemeye hazır olun.
+
+**Bunlar, özel alanınıza uygun bir Ubiquitous Language (Ortak Dil) oluşturmak için ideal ilk adımlardır.** Ancak, bu tam olarak geliştirdiğiniz model değildir. Bu sadece Ubiquitous Language'in başlangıcıdır ve çok geçmeden sisteminizin kaynak kodunda ifade edilecektir. Java, C#, Scala veya başka bir programlama diliyle ilgiliyiz. Bu çizimler ve belgeler, Ubiquitous Language'in zamanla genişleyeceğini ve şekil değiştireceğini de dikkate almaz. Başlangıçta bizi doğru bir şekilde yönlendiren, uzmanlaşmış alanımıza uygun bir Ubiquitous Language geliştiren artefaktlar zamanla geçersiz hale gelebilir. Bu yüzden nihayetinde en kalıcı olan ve kesin anlamları sağlayan şey, takım konuşması ve koddaki modeldir.
+
+Takım konuşması ve kod, Ubiquitous Language'in kalıcı ifadesi olacağı için, çizimlerin, sözlüklerin ve diğer belgelerin, hızla geliştirilen konuşma diline ve kaynak koda ayak uydurmanın zor olacağını kabul etmeye hazırlıklı olun. Bu, DDD kullanmanın bir gerekliliği değildir, ancak pragmatiktir çünkü tüm belgeleri sistemle senkronize tutmak pratik olmaz.
+
+Bu bilgilerle, **saveCustomer()** örneğini yeniden tasarlayabiliriz. Ya Customer sınıfını, desteklemesi gereken her bir iş hedefini yansıtacak şekilde tasarlasaydık?
+
+```
+public interface Customer {
+	public void changePersonalName(String firstName, String lastName);
+	public void postalAddress(PostalAddress postalAddress);
+	public void relocateTo(PostalAddress changedPostalAddress);
+	public void changeHomeTelephone(Telephone telephone);
+	public void disconnectHomeTelephone();
+	public void changeMobileTelephone(Telephone telephone);
+	public void disconnectMobileTelephone();
+	public void primaryEmailAddress(EmailAddress emailAddress);
+	public void secondaryEmailAddress(EmailAddress emailAddress);
+}
+```
+
+Bu modelin Customer için en iyi model olmadığını tartışabiliriz, ancak DDD uygularken tasarımı sorgulamak beklenen bir şeydir. Bir takım olarak, en iyi modelin ne olduğunu tartışabiliriz ve yalnızca kabul edilen Ubiquitous Language'i keşfettikten sonra karar verebiliriz. Yine de, yukarıdaki arayüz, bir Customer’ın desteklemesi gereken çeşitli iş hedeflerini açıkça yansıtmaktadır, ancak dilin sürekli olarak iyileştirilebileceği doğrudur.
+
+Ayrıca, Application Service'in de iş hedeflerinin açık niyetlerini yansıtacak şekilde yeniden yapılandırılacağına dikkat etmek önemlidir. Her Application Service yöntemi, tek bir kullanım durumu akışını veya kullanıcı hikayesini ele almak için değiştirilir.
+
+```
+@Transactional
+public void changeCustomerPersonalName( 
+	String customerId,
+	String customerFirstName,
+	String customerLastName) { 
+	Customer customer = customerRepository.customerOfId(customerId); 
+	if (customer == null) {
+		throw new IllegalStateException("Customer does not exist."); 
+	}
+
+	customer.changePersonalName(customerFirstName, customerLastName);
+}
+```
+
+Bu yeni tasarım, orijinal örnekten farklıdır çünkü o kodda tek bir metod birçok farklı kullanım durumu akışını veya kullanıcı hikayesini ele alıyordu. Yeni örnekte ise tek bir **Application Service** metodu, yalnızca **Customer**'ın kişisel ismini değiştirmek için sınırlandırılmıştır ve başka hiçbir şey yapmaz. Bu yüzden **DDD** kullanırken, **Application Services**'ı buna göre geliştirmek bizim görevimizdir. Bu, kullanıcı arayüzünün de daha dar bir kullanıcı amacını yansıtması gerektiği anlamına gelir, ki bu daha önce doğruydu. Ancak şimdi, bu özel **Application Service** metodu, istemcisinin ilk ve soyadı parametrelerinin ardından on null göndermesini gerektirmez.
+
+Bu yeni tasarım, zihninizi rahatlatmıyor mu? Kodu okuyabilir ve ne yaptığını kolayca anlayabilirsiniz. Ayrıca bunu test edebilir ve tam olarak ne yapması gerekiyorsa onu yaptığını, yapmaması gereken hiçbir şeyi yapmadığını doğrulayabilirsiniz.
+
+Böylece **Ubiquitous Language**, bir **takımın** belirli bir iş alanı için kullandığı kavram ve terimleri yazılım modeline yakalamak için kullanılan bir takım desenidir. Yazılım modeli, **isimler**, **sıfatlar**, **fiiller** ve **zengin ifadeler** gibi, yakın ilişkili takım tarafından resmi olarak formüle edilen ve konuşulan dili içerir. Hem yazılım hem de modelin **alanın ilkelerine** uygunluğunu doğrulayan testler, bu dili yakalar ve buna uyar, aynı dili takımın konuştuğu dil gibi.
+
+**_Her Yerde Olan, Ama Evrensel Olmayan (Ubiquitous, but Not Universal)_**
+
+Ubiquitous Language'ın kapsamını netleştirmek için bazı temel kavramları dikkatle akılda tutmalıyız:
+
+* **Ubiquitous** kelimesi, "her yerde bulunan" veya "yaygın" anlamına gelir ve bu dil, ****takım içinde konuşulan**** ve **tek bir alan modeliyle ifade edilen** dildir**.**
+
+* **Ubiquitous Language, şirket çapında, hatta dünya çapında geçerli olacak evrensel bir alan dili yaratma girişimi değildir.**
+
+* **Her Bounded Context** için yalnızca **bir tane Ubiquitous Language** vardır.
+
+* **Bounded Context'ler düşündüğümüzden daha küçüktür.** Bir **Bounded Context**, yalnızca **belirli bir iş alanının tam Ubiquitous Language'ını** kapsayacak kadar büyük olmalı, fazlasını içermemelidir.
+
+* **Bu dil yalnızca, izole edilmiş bir Bounded Context içinde geliştirme yapan takım için geçerlidir.**
+
+* **Tek bir proje içinde bile, her biri kendi Ubiquitous Language’ına sahip birden fazla izole edilmiş Bounded Context bulunur** ve bunlar **Context Maps** aracılığıyla entegre edilir. **Bazı terimler örtüşebilir, ancak her Bounded Context’in kendine özgü bir dili vardır.**
+
+* **Eğer tek bir Ubiquitous Language'ı tüm kuruluşa veya daha kötüsü, birden fazla kuruluşa uygulamaya çalışırsanız, başarısız olursunuz.**
+
+**DDD’yi doğru bir şekilde uyguladığınız yeni bir projeye başlarken, öncelikle geliştirilen Bounded Context’i belirleyin.** Bu, alan modelinizin etrafına açık bir sınır çizer. **Bu sınırlar içinde Ubiquitous Language'ı geliştirin ve kullanın.** ****Bu dilin bir parçası olmayan tüm kavramları reddedin.****
+
+
+## **DDD Kullanmanın İş Değerine Katkısı**
+
+Eğer benim deneyimlerime benzer bir deneyiminiz varsa, yazılım geliştiricilerin artık **sadece "havalı" veya ilgi çekici olduğu için** teknolojileri ve teknikleri uygulayamayacağını biliyorsunuzdur. **Yaptığımız her şeyi gerekçelendirmek zorundayız.**
+
+Eskiden bu her zaman böyle değildi, ancak **şimdi böyle olması iyi bir şey.** Çünkü **bir teknolojiyi veya tekniği kullanmanın en iyi gerekçesi, iş dünyasına gerçek ve somut bir değer sağlamasıdır.**
+
+Eğer **önerdiğimiz yaklaşımın iş açısından daha yüksek değer sunduğunu**  kanıtlayabilirsek, **işletme neden bunu reddetsin?** Özellikle de **alternatiflere kıyasla daha fazla iş değeri sağladığımızı gösterebilirsek, DDD gibi yaklaşımlar çok daha güçlü bir iş gerekçesine sahip olur.**
+
+DDD uygulamanın **gerçekçi iş değerini** düşünelim. Bunu **yönetiminizle, alan uzmanlarınızla ve teknik ekip üyelerinizle** açıkça paylaşmanız önemli. İşte DDD'nin sunduğu değer ve faydaların kısa bir özeti:
+
+1. Organizasyon, alanına dair kullanışlı bir model kazanır.
+2. İş süreçleri daha rafine ve net bir şekilde tanımlanır ve anlaşılır.
+3. Alan uzmanları yazılım tasarımına katkıda bulunur.
+4. Daha iyi bir kullanıcı deneyimi sağlanır.
+5. Saf modeller etrafında temiz sınırlar oluşturulur.
+6. Kurumsal mimari daha düzenli hale gelir.
+7. Çevik, yinelemeli ve sürekli modelleme uygulanır.
+8. Hem stratejik hem de taktiksel yeni araçlar kullanılır.
+
+
+### Organizasyon Kendİ AlanınDa Kullanışlı Bir Model Kazanır
+
+DDD’nin odağı, **iş için en önemli olan noktaya yatırım yapmaktır.** Gereğinden fazla modelleme yapmayız; **temel alanımıza (Core Domain)** odaklanırız. **Destekleyici modeller de önemlidir**, ancak öncelik her zaman temel alan modeline verilir.
+
+Eğer işimizi diğerlerinden ayıran noktaya odaklanırsak, **misyonumuz daha iyi anlaşılır** ve süreci doğru yönlendirecek net çerçeveler oluştururuz. Bu sayede, **tam olarak rekabet avantajı sağlayacak çözümler geliştiririz.**
+
+
+
+### İşin Daha Rafine ve Kesin Bir Tanımı ile Anlayışı Gelişir
+
+DDD sürecinde **işin kendisi ve misyonu daha iyi anlaşılır.** Öyle ki, **Core Domain için geliştirilen Ubiquitous Language, pazarlama materyallerine bile yansıyabilir.** Hatta **vizyon dokümanlarında ve misyon bildirimlerinde** kullanılabilir.
+
+Model **zamanla geliştirildikçe**, işletme daha derin bir analiz kabiliyeti kazanır. Alan uzmanları, teknik ekiple birlikte **karşılıklı olarak fikirlerini zorladıkça** ve birbirlerini etkiledikçe **önemli detaylar açığa çıkar.** Bu detaylar, **işletmenin hem mevcut hem de gelecekteki stratejik ve taktiksel kararlarını daha iyi değerlendirmesine** yardımcı olur.
+
+
+### Alan Uzmanları Yazılım Tasarımına Katkıda Bulunur
+
+DDD'nin **büyük bir iş değeri**, organizasyonun **ana iş alanına dair daha derin bir anlayış geliştirmesidir.**
+
+Alan uzmanları her zaman **kavramlar ve terminoloji konusunda hemfikir olmayabilir.** Bu farklılıklar, bazen organizasyona **dışarıdan gelen farklı deneyimlerden**, bazen de **aynı organizasyon içindeki farklılaşmış süreçlerden** kaynaklanır.
+
+Ancak DDD yaklaşımı sayesinde, **alan uzmanları ortak bir noktada buluşur ve mutabakat sağlar.** Bu, sadece yazılım geliştirme sürecini değil, **tüm organizasyonu daha güçlü hale getirir.**
+
+**Geliştiriciler ve alan uzmanları ortak bir dil kullanmaya başlar. Bilgi transferi kolaylaşır. Ekip içinde ortak bilgi paylaşımı sağlanır. Yeni gelenler için eğitim ve süreç devri daha basit hale gelir. Sadece belirli kişilerde saklı kalan “gizli bilgi” (tribal knowledge) problemi ortadan kalkar.**
+
+Bu avantajlar, **ekibin daima domain dili ile konuşmasını sağlamak için belirlenen hedef doğrultusunda devam eder.**
+
+
+### **Daha İyi Bir Kullanıcı Deneyimi Sağlanır**
+
+**Kullanıcı deneyimi**, **domain modeline daha iyi uyum sağlayacak şekilde geliştirilebilir.** DDD sayesinde, **kavramsal model doğrudan yazılıma entegre edilir** ve kullanıcı etkileşimini şekillendirir.
+
+Eğer yazılım **çok fazla kararı kullanıcıya bırakırsa**, kullanıcıların **karmaşık kararlar vermesi ve eğitilmesi**  gerekir. **Yanlış veri girişi, verimsizlik ve deneme-yanılma süreci kullanıcı performansını düşürebilir.**
+
+Ancak, **kullanıcı deneyimi domain modeline göre tasarlandığında, kullanıcılar doğru sonuçlara yönlendirilir. Yazılım kullanıcıları eğitir**, bu da işletme için eğitim maliyetlerini azaltır. **Daha az eğitimle daha hızlı üretkenlik sağlanır.** Bu **doğrudan iş değeri yaratır.**
+
+
+### Saf Modeller Etrafında Temiz Sınırlar Oluşturulur
+
+**Teknik ekip**, **kendi mühendislik ilgileri yerine işin gerekliliklerine odaklanmaya teşvik edilir. Modelin saflığını korumak**, çözümün etkinliğini artırır. **Kaynakların en çok değer yaratacak alanlara yönlendirilmesini sağlar. Projenin Bounded Context’ini anlamak, bu sürecin merkezindedir.**
+
+
+### Kurumsal Mimari Daha İyi Organize Edilir
+
+Bounded Context’ler doğru anlaşılıp bölümlendiğinde, tüm ekipler hangi entegrasyonların neden gerekli olduğunu  net bir şekilde görebilir. **Sınırlar ve ilişkiler açık hale gelir.** Bağımlılıkları olan modeller arasında Context Map’ler kullanılarak entegrasyonlar sağlanır. Bu süreç, tüm kurumsal mimarinin daha iyi anlaşılmasını sağlar.
+
+
+### Çevik, Yinelenebilir ve Sürekli Modelleme Kullanılır
+
+DDD, **ağır ve bürokratik bir tasarım süreci değildir.** Önemli olan, domain uzmanlarının zihnindeki modeli iş için kullanılabilir hale getirmektir. Gerçek dünyayı birebir kopyalamak değil, iş problemlerine uygun çözümler üretmek esastır. Ekipler, çevik ve artımlı bir yaklaşım benimseyerek sürekli modelleme yapar. Oluşturulan model, doğrudan çalışan yazılımın kendisidir ve işletme ihtiyaç duyduğu sürece rafine edilir.
+
+
+### Stratejik ve Taktiksel Yeni Araçlar Kullanılır
+
+Bounded Context, ekibin belirli bir iş problemi için modelleme yapabileceği sınırları belirler. Bu bağlam içinde, Ubiquitous Language geliştirilir ve yazılım modeline entegre edilir. Bağımsız ekipler, Bounded Context’leri Context Map’ler ile yöneterek entegrasyonları stratejik olarak planlar. _Taktiksel modelleme araçları kullanılır:_ **Aggregates, Entities, Value Objects, Services, Domain Events** ve diğerleri. Bu araçlar, **DDD’nin güçlü ve esnek bir yazılım mimarisi oluşturmasını sağlar.**
+
+
+## DDD Uygulamanın Zorlukları
+
+DDD’yi uygularken zorluklarla karşılaşacaksınız. Bunu başaran herkes bu zorluklarla yüzleşmiştir. **Peki, yaygın zorluklar nelerdir ve bunlarla karşılaştığımızda DDD'yi nasıl savunabiliriz?** İşte en yaygın olanları:
+
+* **Ubiquitous Language oluşturmak için gerekli zaman ve çaba**
+
+* **Domain uzmanlarını en baştan ve sürekli olarak projeye dahil etmek**
+
+* **Geliştiricilerin, kendi domainlerindeki çözümlere bakış açılarını değiştirmesi**
+
+**DDD’yi tam anlamıyla uygulamak ve iş için en yüksek değeri elde etmek istiyorsanız, bu süreç daha fazla düşünmeyi, çaba harcamayı ve zaman ayırmayı gerektirir.**
+
+DDD’nin en büyük zorluklarından biri, iş domaini hakkında düşünmek, kavramları ve terminolojiyi araştırmak ve domain uzmanlarıyla sürekli diyalog kurarak **Ubiquitous Language’i keşfetmek, geliştirmek ve iyileştirmektir.** Bu, kod yazmaya hemen başlamaktansa **daha fazla analiz yapmayı gerektirir.** Ancak, **teknolojik jargon kullanarak doğrudan kodlamaya geçmek yerine** işin kendisini anlamak **uzun vadede daha büyük değer sağlar.**
+
+Domain uzmanlarını projeye dahil etmek her zaman kolay değildir. Ancak **bunu mutlaka yapmalısınız.** **Eğer en az bir gerçek uzmanı sürece dahil edemezseniz, domainin derin bilgisini keşfetmeniz mümkün olmayacaktır.** Uzmanları sürece dahil ettiğinizde ise **sorumluluk artık geliştiricilere düşer.** Geliştiriciler, **domain uzmanlarıyla konuşmalı, dikkatle dinlemeli ve onların konuştuğu dili yazılıma yansıtmalıdır.**  Ancak bu her zaman kolay olmaz. Gerçek domain uzmanları **sürekli müsait olmayabilir, seyahat edebilir ve toplantılara katılmaları haftalar sürebilir, küçük işletmelerde, CEO veya üst düzey yöneticiler domain uzmanı olabilir, ancak onların öncelikleri farklı olabilir.**
+
+Çoğu geliştirici, DDD'yi düzgün bir şekilde uygulayabilmek için düşünme biçimlerini değiştirmek zorunda kalmıştır. **Geliştiriciler olarak biz teknik düşünürüz.** Teknik çözümler bizim için kolaydır. **Bu, teknik düşünmenin kötü olduğu anlamına gelmez,** sadece bazen daha az teknik düşünmenin daha iyi olabileceği zamanlar vardır. **Eğer yıllardır sadece teknik yollarla yazılım geliştirmeyi alışkanlık haline getirdiysek, belki de şimdi yeni bir düşünme biçimi üzerinde düşünmenin tam zamanıdır.** Domain'inizin Ubiquitous Language'ini geliştirmek, **başlamak için en iyi yerdir.**
+
+DDD ile gereken başka bir düşünce seviyesi, kavram isimlendirmesinin ötesindedir. **Bir domaini yazılım aracılığıyla modellediğimizde, hangi model nesnelerinin ne yaptığına dikkatlice düşünmemiz gerekir.** Bu, nesnelerin davranışlarını tasarlamakla ilgilidir. Evet, davranışların, **Ubiquitous Language'i** iletmek için doğru şekilde isimlendirilmesini istiyoruz. Ancak, bir nesnenin belirli bir davranış aracılığıyla ne yaptığına da dikkat edilmelidir. Bu, bir sınıf üzerinde sadece nitelikler oluşturup, getter ve setter'ları modelin istemcilerine halka açık hale getirmekten öte bir çaba gerektirir.
+
+Şimdi daha ilginç bir domain modeline bakalım, daha önce ele aldığımız basit domain'lerden daha zorlu bir model. **Amacım önceki yönlendirmelerimi burada yinelemek ve fikirleri pekiştirmektir.**
+
+Tekrar vurgulamak gerekirse, model nesnelerimiz için yalnızca veri erişimcilerini sağlarsak, sonuçlar **bir veri modeline** benzeyecektir. Aşağıdaki iki örneği inceleyin ve hangisinin daha derinlemesine bir tasarım düşüncesi gerektirdiğine ve hangisinin istemcilerine daha fazla fayda sağladığına karar verin. Gereksinim, Scrum modelindeki bir sprint'e bir backlog öğesini taahhüt etmekle ilgilidir. Muhtemelen bunu sürekli yapıyorsunuzdur, dolayısıyla bu domain çoğunlukla tanıdık bir domain'dir.
+
+İlk örnekte, genellikle günümüzde yapılan, öznitelik erişimcileri kullanılır:
+
+```
+public class BacklogItem extends Entity {
+	private SprintId sprintId;
+	private BacklogItemStatusType status;
+	... 
+
+	public void setSprintId(SprintId sprintId) {
+		this.sprintId = sprintId; 
+	}
+
+	public void setStatus(BacklogItemStatusType status) {
+		this.status = status; 
+	}
+	...
+}
+```
+
+Bu modelin müşterisine gelince:
+
+```
+// client commits the backlog item to a sprint
+// by setting its sprintId and status 
+
+backlogItem.setSprintId(sprintId);
+backlogItem.setStatus(BacklogItemStatusType.COMMITTED);
+```
+
+İkinci örnek, domain nesnesi davranışı kullanarak domain'in Ubiquitous Language'ini ifade eder:
+
+```
+public class BacklogItem extends Entity {
+	private SprintId sprintId;
+	private BacklogItemStatusType status;
+	... 
+
+	public void commitTo(Sprint aSprint) {
+		if (!this.isScheduledForRelease()) {
+			throw new IllegalStateException("Must be scheduled for release to commit to sprint."); 
+		}
+
+		if (this.isCommittedToSprint()) {
+			if (!aSprint.sprintId().equals(this.sprintId())) { 
+				this.uncommitFromSprint();
+			}
+		}
+        
+        this.elevateStatusWith(BacklogItemStatus.COMMITTED);
+        this.setSprintId(aSprint.sprintId()); 
+		DomainEventPublisher
+			.instance()
+			.publish(new BacklogItemCommitted(
+				this.tenant(),
+				this.backlogItemId(),
+				this.sprintId()));
+	}
+	...
+}
+```
+
+Bu açık modelin müşterisi daha güvenli bir zeminde faaliyet gösteriyor gibi görünmektedir:
+
+```
+// client commits the backlog item to a sprint
+// by using a domain-specific behavior 
+
+backlogItem.commitTo(sprint);
+```
+
+İlk örnek, tamamen **veri odaklı** bir yaklaşım kullanır. **Sorumluluk tamamen istemciye** aittir; istemci, backlog öğesini doğru şekilde bir sprint'e nasıl dahil edeceğini bilmelidir. Gerçekten bir domain modeli olmayan bu model, hiçbir şekilde yardımcı olmaz. Ya istemci yanlışlıkla yalnızca **sprintId'yi değiştirirse** ama durumu değiştirmezse, ya da tam tersini yaparsa? Ya da gelecekte başka bir özelliğin ayarlanması gerekirse? İstemci kodu, verilerin doğru attribute'lara nasıl haritalandığını analiz etmelidir.
+
+Bu yaklaşım aynı zamanda **BacklogItem nesnesinin şeklini** açığa çıkarır ve dikkatini tamamen **veri attribute'ları** üzerinde toplar, **davranışlar üzerinde değil**. **setSprintId()** ve **setStatus()** işlevlerinin davranışlar olduğunu savunsanız da, burada önemli olan nokta, bu “davranışların” gerçek bir iş domaini değeri taşımamasıdır. Bu “davranışlar”, domain yazılımının modellemesi gereken senaryoların, yani bir backlog öğesini bir sprint'e dahil etme amacının niyetlerini açıkça belirtmez. Ayrıca, istemci geliştiricisinin, bir backlog öğesini bir sprint'e dahil etmek için hangi **BacklogItem attribute'larını** seçeceğini düşünmesi gerektiği için bilişsel yük yaratır. Çünkü bu, veri odaklı bir modeldir.
+
+Şimdi ikinci örneği ele alalım. Veri attribute'larını istemcilere sunmak yerine, açıkça ve net bir şekilde istemcinin bir backlog öğesini bir sprint'e dahil edebileceğini belirten bir **davranış** sunar. Bu belirli domain uzmanları, modelin aşağıdaki gereksinimini tartışır:
+
+> Her backlog öğesinin bir sprint'e dahil edilmesine izin verin. Ancak yalnızca zaten bir sürüm için planlanmışsa dahil edilebilir. Eğer başka bir sprint'e dahil edilmişse, önce o sprint'ten çıkarılmalıdır. Dahil etme işlemi tamamlandığında, ilgili taraflara bildirimde bulunun.
+
+Böylece, ikinci örnekteki metot, modelin Ubiquitous Language'ini bağlamda, yani **BacklogItem türünün izole edildiği Bounded Context'te** yakalar. Bu senaryoyu incelediğimizde, ilk çözümün eksik ve hatalar içerdiğini keşfederiz.
+
+İkinci implementasyonla istemcilerin, işlemi gerçekleştirmek için gerekenleri bilmesine gerek yoktur; işlem ne kadar basit veya karmaşık olursa olsun, bu metodun implementasyonu gerektiği kadar mantık içerir. Henüz sürüm için planlanmamış bir backlog öğesinin dahil edilmesini engellemek için kolayca bir **koruma** ekledik. Gerçekten de ilk implementasyondaki setter'lar içine korumalar ekleyebilirsiniz, ancak bu durumda setter, sprintId ve status için gereksinimleri anlamaktan ziyade nesnenin tam bağlamını anlamaktan sorumlu olur.
+
+Burada başka bir ince fark daha vardır. Eğer backlog öğesi başka bir sprint'e dahil edilmişse, önce mevcut sprint'ten çıkarılır. Bu önemli bir ayrıntıdır çünkü bir backlog öğesi bir sprint'ten çıkarıldığında, istemcilere bildirilmesi gereken bir **Domain Event** yayınlanır:
+
+> Her backlog öğesinin bir sprint'ten çıkarılmasına izin verin. Backlog öğesi çıkarıldığında, ilgili taraflara bildirimde bulunun.
+
+** 33. Sayfa son paragraf
