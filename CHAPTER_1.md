@@ -634,4 +634,72 @@ Burada başka bir ince fark daha vardır. Eğer backlog öğesi başka bir sprin
 
 > Her backlog öğesinin bir sprint'ten çıkarılmasına izin verin. Backlog öğesi çıkarıldığında, ilgili taraflara bildirimde bulunun.
 
-** 33. Sayfa son paragraf
+**Sprint'ten çıkarma bildirimini yayınlamak, yalnızca `uncommitFrom()` domain davranışını kullanarak otomatik olarak elde edilir.** `commitTo()` metodunun, bir bildirim yayınladığını bilmesine bile gerek yoktur. Tek bilmesi gereken, yeni bir sprint'e dahil olmadan önce mevcut sprint'ten çıkması gerektiğidir. **Ek olarak, `commitTo()` domain davranışı da son adım olarak ilgili taraflara bir Event ile bildirim gönderir.** Eğer bu zengin davranışı `BacklogItem` içine yerleştirmeseydik, Event'leri istemciden yayınlamamız gerekirdi. Bu da domain mantığının modelden sızmasına neden olurdu. Bu kötü bir yaklaşımdır.
+
+Açıkça görülüyor ki, ikinci örnekteki `BacklogItem`'ı oluşturmak, birinciye kıyasla daha fazla düşünmeyi gerektiriyor. Ancak gereken ekstra çaba çok daha fazla fayda sağlıyor. Bu şekilde tasarım yapmayı öğrendikçe, süreç daha kolay hale gelir. Sonuç olarak, kesinlikle **daha fazla düşünme, daha fazla çaba, daha fazla iş birliği ve ekip çalışmalarının daha iyi koordine edilmesi** gerekiyor. Ancak bu ekstra çaba, DDD'yi ağır hale getirecek kadar büyük değildir. **Bu yeni düşünme şekli, harcanan çabaya fazlasıyla değer.**
+
+**Düşünme Zamanı**
+
+-   Şu anda çalıştığınız **belirli domain’i** kullanarak, modelin yaygın terimlerini ve eylemlerini düşünün.
+-   Terimleri tahtaya yazın.
+-   Daha sonra, ekibinizin proje hakkında konuşurken kullanması gereken ifadeleri yazın.
+-   Bunları gerçek bir domain uzmanı ile tartışarak nasıl geliştirilebileceğini değerlendirin (kahve getirmeyi unutmayın!).
+
+
+**_Alan Modelleme İçin Gerekçe_**
+
+Taktiksel modelleme genellikle stratejik modellemeden daha karmaşıktır. Bu nedenle, **DDD'nin taktiksel desenlerini** (Kümeler, Servisler, Değer Nesneleri, Events vb.) kullanarak bir alan modeli geliştirmeyi planlıyorsanız, **daha fazla düşünme ve daha büyük bir yatırım** gerekecektir. Peki, bir organizasyon **taktiksel alan modellemesini nasıl haklı çıkarabilir?** DDD'nin baştan sona doğru bir şekilde uygulanabilmesi için ekstra yatırım gerektiren bir projeyi nasıl nitelendirebiliriz?
+
+Kendinizi bilinmeyen bir bölgeden geçen bir keşif ekibine liderlik ederken hayal edin. Çevredeki toprakları ve sınırları anlamak istersiniz. Ekibiniz haritaları inceler, belki de kendi haritalarını çizer ve **stratejik yaklaşımlarını** belirler. Arazinin belirli yönlerini değerlendirir ve bunların avantajlarını nasıl kullanabileceğinizi düşünürsünüz. Ancak **ne kadar planlama yaparsanız yapın, bazı unsurlar gerçekten zor olacaktır.**
+
+Eğer stratejiniz dik bir kaya yüzeyini tırmanmanız gerektiğini gösteriyorsa, buna uygun taktiksel araçlar ve manevralar kullanmanız gerekecektir. Aşağıdan yukarıya bakarken belirli zorlukları ve tehlikeli bölgeleri görebilirsiniz. Ancak **her detayı ancak kaya yüzeyine ulaştığınızda fark edersiniz.** Belki kaygan bir kayaya **kazık çakmanız gerekir**, belki de **doğal çatlaklara farklı boyutlarda kamalar sıkıştırarak** ilerleyebilirsiniz. Bu tırmanış desteklerine tutunmak için karabinalarınızı kullanırsınız. **Mümkün olduğunca düz bir rota çizmeye çalışırsınız** ancak **nokta nokta karar vermeniz gerekir.** Bazen **geri dönüp rotayı yeniden belirlemeniz bile gerekebilir**, çünkü **kaya yüzeyinin sunduğu koşullara göre hareket etmek zorundasınız.**
+
+Birçok insan tırmanışı tehlikeli bir macera sporu olarak görse de, deneyimli tırmanıcılar bunun araba kullanmaktan veya uçakla seyahat etmekten daha güvenli olduğunu söyler. Tabii ki, bunun doğru olabilmesi için tırmanıcıların araçları ve teknikleri çok iyi anlamaları ve kayayı doğru değerlendirmeleri gerekir.
+
+Eğer belirli bir Alt Alanın **(Subdomain)** geliştirilmesi böylesine zorlu ve hatta riskli bir tırmanışı gerektiriyorsa, **DDD'nin taktiksel desenlerini** yanımıza alarak bu tırmanışı gerçekleştirmeliyiz. Çekirdek Alan **(Core Domain)** kriterlerine uyan bir iş girişimi, taktiksel desenlerin kullanımını hızla göz ardı etmemelidir. **Çekirdek Alan bilinmeyen ve karmaşık bir bölgedir**. Takımın, sürecin ortasında **felaket niteliğinde bir düşüş yaşamaktan** korunması için doğru taktikleri kullanması en iyi yöntemdir.
+
+İşte bazı pratik rehberler. Öncelikle genel düzeyde başlıyor, ardından detaylara iniyoruz:  
+
+- Eğer bir Sınırlandırılmış Bağlam **(Bounded Context)**, Çekirdek Alan olarak geliştiriliyorsa, bu iş açısından stratejik olarak kritik öneme sahiptir. Çekirdek model henüz tam olarak anlaşılmamıştır ve çok sayıda deney ve yeniden düzenleme (refactoring) gerektirecektir. Uzun vadeli bir taahhüt ve sürekli iyileştirme gerektiriyor olabilir. Bu alan her zaman Çekirdek Alanınız olmayabilir. Ancak, eğer Sınırlandırılmış Bağlam karmaşıksa, yenilikçi bir yapıya sahipse ve uzun vadede değişime uğrayarak varlığını sürdürmesi gerekiyorsa, taktiksel desenleri kullanmayı ciddi şekilde düşünmelisiniz. Bu aynı zamanda, Çekirdek Alanın en yetenekli geliştirici kaynaklarını ve yüksek bir beceri seviyesini hak ettiği anlamına gelir.
+
+- Tüketicileri açısından **Genel Alt Alan (Generic Subdomain)** veya **Destekleyici Alt Alan (Supporting Subdomain)** olabilecek bir alan, aslında sizin işiniz için bir Çekirdek Alan olabilir. Alanı her zaman **nihai tüketicilerin bakış açısından** değerlendirmezsiniz. Eğer bir Sınırlandırılmış Bağlam, ana iş girişiminizin bir parçası olarak geliştiriliyorsa, dış müşterilerin nasıl gördüğünden bağımsız olarak bu alan sizin için bir Çekirdek Alandır. Bu durumda **taktiksel desenleri kullanmayı ciddi şekilde düşünmelisiniz.**  
+
+- Eğer bir Destekleyici Alt Alan (Supporting Subdomain) geliştiriyorsanız ve bunu bir üçüncü taraf Genel Alt Alan (Generic Subdomain) olarak temin edemiyorsanız, taktiksel desenler bu alandaki çabalarınıza fayda sağlayabilir. Bu durumda takımın yetkinlik seviyesini ve modelin ne kadar yeni ve yenilikçi olduğunu göz önünde bulundurmalısınız. Eğer model, özel bir iş değeri katıyor, belirli bir uzmanlığı içeriyor ve sadece teknik olarak ilginç olmanın ötesine geçiyorsa, yenilikçidir. Eğer takım, taktiksel tasarımı doğru şekilde uygulayacak yetkinliğe sahipse ve Destekleyici Alt Alan yenilikçi olup uzun yıllar boyunca varlığını sürdürecekse, bu alan için taktiksel tasarıma yatırım yapmak iyi bir fırsattır. Ancak,bu durum bu modeli Çekirdek Alan yapmaz, çünkü iş açısından sadece destekleyici bir roldedir.
+
+Eğer işinizde alan modelleme konusunda geniş deneyime sahip ve bu konuda kendini rahat hisseden birçok geliştirici çalışıyorsa, bu yönergeler biraz kısıtlayıcı görünebilir. Eğer deneyim seviyesi çok yüksekse ve mühendisler taktiksel desenlerin en iyi seçim olacağını düşünüyorlarsa, onların görüşüne güvenmek mantıklıdır. Deneyimli geliştiriciler bile dürüst bir şekilde, belirli bir durumda bir alan modeli geliştirmenin en iyi seçim olup olmadığını belirteceklerdir.
+
+**İş alanının türü, otomatik olarak geliştirme yaklaşımının nasıl seçileceğini belirlemez.** Takımınız, nihai kararı vermek için bazı **önemli soruları** göz önünde bulundurmalıdır. İşte önceki üst düzey yönergelerle uyumlu ve onları genişleten **daha ayrıntılı karar parametrelerinden oluşan kısa bir liste**:  
+
+- Alan uzmanları mevcut mu ve onlarla bir ekip oluşturma konusunda kararlı mısınız?
+- Belirli iş alanı şu anda nispeten basit olsa da zamanla daha karmaşık hale gelecek mi? **Transaction Script**, karmaşık uygulamalar için risklidir. Eğer şimdi Transaction Script kullanılırsa, bağlam (Context) daha karmaşık hale geldiğinde, daha sonra davranış odaklı bir alan modeline geçiş yapmak pratik olacak mı?
+- DDD’nin taktiksel desenlerinin kullanımı, ister üçüncü taraf ister özel olarak geliştirilmiş olsun, diğer Sınırlandırılmış Bağlamlarla (Bounded Context) entegrasyonu kolaylaştıracak mı?
+- Transaction Script kullanılırsa geliştirme gerçekten daha basit olacak mı ve daha az kod gerektirecek mi? (Her iki yaklaşımla deneyim gösteriyor ki, çoğu zaman Transaction Script en az aynı miktarda veya daha fazla kod gerektiriyor. Bunun nedeni büyük olasılıkla, alanın karmaşıklığının ve modelin yenilikçi yapısının proje planlamasında tam olarak anlaşılamamasıdır. **Alan karmaşıklığını ve yeniliği küçümsemek sık görülen bir hatadır.**)
+- Kritik yol ve zaman çizelgesi, taktiksel yatırım için gereken ek yükü kaldırabilecek mi?
+- Çekirdek Alan’a yapılan taktiksel yatırım, sistemi değişen mimari etkilerden koruyacak mı? (Transaction Script, sistemi bu etkilere karşı savunmasız bırakabilir. Alan modelleri genellikle uzun ömürlüdür, ancak mimari değişimler diğer katmanları daha fazla etkileyebilir.)
+- Müşteriler/dış kullanıcılar, daha temiz, uzun ömürlü bir tasarım ve geliştirme yaklaşımından fayda sağlayacak mı, yoksa yarın bu uygulamanın yerini hazır bir çözüm alabilir mi? Başka bir deyişle, **bu uygulama/hizmeti neden özel olarak geliştirmemiz gerektiğini sorgulamalıyız.**  
+- Taktiksel DDD kullanarak bir uygulama/hizmet geliştirmek, Transaction Script gibi diğer yaklaşımlardan daha zor olacak mı? (Bu sorunun yanıtında takımın yetkinlik seviyesi ve alan uzmanlarının erişilebilirliği kritik öneme sahiptir.)  
+- Eğer takımın araç seti DDD’yi destekleyen unsurlarla eksiksiz olsaydı, yine de başka bir yaklaşımı seçer miydik? (Bazı unsurlar **modelin kalıcılığını (persistence) daha pratik hale getirir**, örneğin: **nesne-ilişkisel haritalama (ORM), tam Aggregate serileştirme ve kalıcılık, bir Olay Mağazası (Event Store) veya taktiksel DDD’yi destekleyen bir framework**. Bunların dışında başka yardımcı unsurlar da olabilir.)  
+
+Bu liste, alanınıza özel bir önceliklendirme içermemektedir ve muhtemelen ek kriterler belirleyebilirsiniz. İşiniz için en güçlü ve avantajlı yöntemleri kullanmanın ikna edici nedenlerini anlıyorsunuz. Aynı zamanda iş ve teknoloji ortamınızı da en iyi siz biliyorsunuz. **Sonuçta, tatmin edilmesi gereken kişiler nesne yönelimli geliştiriciler veya teknoloji uzmanları değil, iş müşterileridir. Bu yüzden akıllıca seçim yapın.**
+
+**_DDD Ağır Bir Yük Değildir_**
+
+DDD’nin doğru şekilde uygulanmasının, ağır ve törensel bir süreç gerektirdiğini, desteklenmesi gereken gereksiz dokümantasyon çıktıları oluşturduğunu ima etmek istemiyorum. DDD bununla ilgili değildir. Scrum gibi herhangi bir çevik proje çerçevesine kolayca entegre olacak şekilde tasarlanmıştır. **Tasarım ilkeleri, gerçek bir yazılım modelinin test-öncelikli ve hızlı şekilde iyileştirilmesini teşvik eder.**  
+
+Eğer yeni bir alan nesnesi (Entity veya Value Object gibi) geliştirmeniz gerekirse, **test-öncelikli** yaklaşım şu şekilde işler:  
+
+1. Yeni alan nesnesinin, alan modelinin bir istemcisi tarafından nasıl kullanılacağını gösteren bir test yazın.
+2. Testin derlenmesini sağlayacak kadar kod içeren yeni alan nesnesini oluşturun.
+3. Hem testi hem de alan nesnesini, testin istemcinin nesneyi nasıl kullanacağını doğru şekilde temsil ettiğinden emin olana kadar iyileştirin. Ayrıca alan nesnesinin uygun davranışsal metot imzalarına sahip olmasını sağlayın.
+4. Her alan nesnesinin davranışlarını uygulayın ve test geçene kadar alan nesnesini iyileştirin. Gereksiz kod tekrarlarını ortadan kaldırın.  
+5. Kodunuzu takım üyelerine ve alan uzmanlarına göstererek, testin yaygın Dil (Ubiquitous Language) çerçevesinde alan nesnesini doğru şekilde kullandığından emin olun.
+
+**Bu sürecin, zaten uygulamakta olduğunuz test-öncelikli yaklaşımdan farklı olmadığını düşünebilirsiniz.** Aslında biraz farklı olabilir, ancak temelde **aynı prensiplere dayanır.** Bu test aşaması, modelin kusursuz olduğunu kanıtlamaya çalışmaz. Bunun yerine, öncelikle **modelin nasıl kullanılacağını belirlemeye ve bu kullanımı yönlendiren testlerle tasarımı şekillendirmeye odaklanırız.** İyi haber şu ki bu gerçekten çevik bir yaklaşımdır. **DDD, törensel ve ağır bir tasarım sürecini teşvik etmez; aksine hafif ve esnek bir geliştirme süreci sunar.**  
+
+Daha sonraki aşamalarda, yeni alan nesnesinin her açıdan (ve pratik olarak mümkün olan her senaryoda) doğruluğunu test eden ek testler yazarsınız. Bu noktada, alan nesnesinin içindeki alan kavramının doğru ifade edilip edilmediğiyle ilgilenirsiniz. İstemci benzeri test kodunu okumak, Yaygın Dil’i (Ubiquitous Language) doğru bir şekilde yansıttığını göstermelidir. Teknik bilgisi olmayan alan uzmanları bile bir geliştiricinin yardımıyla **bu kodu yeterince iyi okuyabilmeli ve modelin takımın hedeflerine ulaşıp ulaşmadığını değerlendirebilmelidir.**  
+
+Bu durum, test verilerinin gerçekçi olması gerektiği anlamına gelir. **Testler, modelin ifadesini desteklemeli ve güçlendirmelidir.** Aksi takdirde, **alan uzmanları uygulamanın doğruluğu hakkında tam bir yargıya varamaz.**  
+
+Bu test-öncelikli çevik metodoloji, mevcut iterasyon kapsamında belirlenen görevler tamamlanana kadar tekrar eder. Bu yaklaşım, çevik prensiplerle uyumludur ve Extreme Programming (XP) tarafından başlangıçta önerilen uygulamaları yansıtır. Çevik geliştirme, DDD’nin temel desen ve uygulamalarını ortadan kaldırmaz; aksine, bu iki yaklaşım bir arada oldukça iyi çalışır. Elbette, test-öncelikli geliştirme yapmadan da tam kapsamlı DDD uygulayabilirsiniz. Mevcut model nesneleri için her zaman sonradan testler yazabilirsiniz. Ancak, modelin istemci perspektifinden tasarlanması, ek bir avantaj sunar.
+
+** Fiction, with Bucketfuls of Reality bölümünde kaldım.
