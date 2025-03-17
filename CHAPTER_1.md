@@ -702,4 +702,89 @@ Bu durum, test verilerinin gerçekçi olması gerektiği anlamına gelir. **Test
 
 Bu test-öncelikli çevik metodoloji, mevcut iterasyon kapsamında belirlenen görevler tamamlanana kadar tekrar eder. Bu yaklaşım, çevik prensiplerle uyumludur ve Extreme Programming (XP) tarafından başlangıçta önerilen uygulamaları yansıtır. Çevik geliştirme, DDD’nin temel desen ve uygulamalarını ortadan kaldırmaz; aksine, bu iki yaklaşım bir arada oldukça iyi çalışır. Elbette, test-öncelikli geliştirme yapmadan da tam kapsamlı DDD uygulayabilirsiniz. Mevcut model nesneleri için her zaman sonradan testler yazabilirsiniz. Ancak, modelin istemci perspektifinden tasarlanması, ek bir avantaj sunar.
 
-** Fiction, with Bucketfuls of Reality bölümünde kaldım.
+
+## **Gerçeklik Dolu Bir Kurgu**  
+
+Modern DDD uygulamaları için en iyi uygulama rehberini nasıl sunabileceğimi düşünürken, önerdiğim her şeyin neden yapılması gerektiğini de açıklamak istedim. Yani sadece **"nasıl"** değil, **"neden"** sorusuna da yanıt vermeliydim. Birkaç projeyi vaka çalışması olarak ele almak, belirli bir öneride bulunmamın nedenlerini göstermek ve DDD’nin yaygın karşılaşılan zorlukları nasıl çözdüğünü ortaya koymak açısından doğru bir yöntem gibi geldi.
+
+Bazen **diğer proje ekiplerinin karşılaştığı sorunları incelemek ve onların DDD’yi yanlış kullanımlarından ders çıkarmak, kendi hatalarımıza bakmaktan daha kolaydır.** Başkalarının çalışmalarındaki eksiklikleri fark ettiğinizde, siz de benzer bir çıkmaza sürüklenip sürüklenmediğinizi veya aynı bataklıkta olup olmadığınızı değerlendirebilirsiniz. Böylece, bulunduğunuz noktayı anladıktan sonra, hataları düzeltmek ve gelecekte aynı sorunları yaşamamak için gerekli değişiklikleri yapabilirsiniz.
+
+Ancak, üzerinde çalıştığım gerçek projeleri anlatmak yerine —zaten bunları açıkça paylaşmam mümkün değil— gerçek dünyadaki durumlara dayanan kurgusal senaryolar kullanmaya karar verdim. Böylece, belli bir uygulama yaklaşımının neden en iyi ya da en azından daha iyi çalıştığını göstermek için ideal koşulları yaratabilirim.
+
+Dolayısıyla burada yalnızca bir kurgu oluşturmuyorum. **Gerçek dünyada faaliyet gösteren bir şirketin iş modeline sahip kurgusal bir firma, gerçek yazılımlar geliştiren ve dağıtan kurgusal ekipler ve gerçek dünyadaki DDD zorlukları ile çözümleri yer alıyor.** Ben buna **"gerçeklik dolu kurgu"** diyorum. Bu yöntemin oldukça etkili olduğunu gördüm ve umarım sizin için de faydalı olur.
+
+Herhangi bir dizi örnek sunarken, konunun öğretilebilir ve öğrenilebilir olmasını sağlamak için kapsamı belirli bir çerçevede tutmalıyız. Aksi takdirde aşırı detaylar içinde boğulabiliriz. Aynı zamanda, örneklerin fazla basit olması da kritik dersleri kaçırmamıza neden olabilir. Bu dengeyi sağlamak için seçtiğim iş senaryosu, büyük ölçüde sıfırdan (greenfield) geliştirme projelerine dayanıyor.
+
+Projeleri farklı zaman dilimlerinde inceledikçe, **ekiplerin yaşadığı çeşitli sorunları ve başarıları göreceğiz.** Örneklerdeki Core Domain, DDD’yi farklı açılardan ele alabilecek kadar karmaşık olacak. Bounded Context’lerimizin bazıları **diğer bağlamlarla etkileşim içinde olacak, böylece DDD’nin entegrasyon süreçlerini de inceleyebileceğiz.** Ancak, bu üç örnek model, her türlü stratejik tasarım sürecini kapsayamaz. Özellikle, çok sayıda eski (legacy) sistemin bulunduğu "brownfield" ortamlardaki zorlukları tam anlamıyla göstermek mümkün değil. Yine de bu gibi karmaşık durumları tamamen göz ardı etmeyeceğim. Uygun olduğu durumlarda, ana örneklerden saparak DDD’nin daha geniş bir perspektifte nasıl avantajlar sunduğunu da inceleyeceğiz.
+
+Şimdi sizi **şirketle tanıştırayım ve ekipleri ile üzerinde çalıştıkları projeler hakkında biraz bilgi vereyim.**
+
+**_SaaSOvation, Ürünleri ve DDD Kullanımı_**
+
+Şirketin adı **SaaSOvation.** Adından da anlaşılacağı gibi, SaaSOvation’ın misyonu, bir dizi hizmet olarak yazılım **(SaaS)** ürünü geliştirmek. Bu SaaS ürünleri **SaaSOvation tarafından barındırılacak** ve **abone olan şirketler tarafından erişilip kullanılacak.** Şirketin iş planı, biri diğerinin öncüsü olacak şekilde iki ürün geliştirmeyi içeriyor.
+
+1. _Amiral Gemisi Ürün: CollabOvation_
+
+SaaSOvation’ın amiral gemisi ürünü **CollabOvation.** Bu ürün, **kurumsal iş birliği için tasarlanmış bir platform** olup, önde gelen sosyal ağların sunduğu özellikleri içeriyor. Forumlar, paylaşılan takvimler, bloglar, anlık mesajlaşma, wiki, mesaj panoları, doküman yönetimi, duyurular ve uyarılar, aktivite takibi ve RSS beslemeleri gibi araçlar bu pakette yer alıyor.  
+
+Tüm bu iş birliği araçları, şirketlerin hem küçük projelerde hem büyük programlarda hem de iş birimleri genelinde verimliliği artırmasına yardımcı olmak için tasarlanmış. Günümüzün hızla değişen ve belirsizliklerle dolu ekonomik ortamında, şirket içi iş birliği bilgi transferini hızlandırmak, fikir paylaşımını teşvik etmek ve yaratıcı süreci etkili bir şekilde yönetmek için kritik öneme sahip. **CollabOvation, yüksek değerli bir çözüm sunarken, geliştiriciler için de önemli bir meydan okuma olacak.**  
+
+2. _İkinci Ürün: ProjectOvation_
+
+İkinci ürün olan **ProjectOvation**, SaaSOvation’ın **asıl odaklandığı Core Domain.** Bu araç, **çevik proje yönetimini kolaylaştırmayı amaçlıyor** ve **Scrum çerçevesini** temel alıyor. Scrum’ın geleneksel proje yönetim modeliyle tamamen uyumlu olan ProjectOvation, şu bileşenleri içeriyor:  
+
+- Ürün  
+- Ürün sahibi  
+- Takım  
+- Backlog öğeleri  
+- Planlanan sürümler  
+- Sprintler  
+
+Ayrıca, backlog öğelerinin iş değeri hesaplamalarını yapabilen maliyet-fayda analizi tabanlı hesaplama araçları da mevcut. Eğer Scrum’ın en güçlü halini düşünürsek, ProjectOvation tam olarak buraya yöneliyor. Ancak, SaaSOvation bundan daha fazlasını da hedefliyor.
+
+_CollabOvation ve ProjectOvation Entegre Olacak_
+
+SaaSOvation, bu iki ürünün tamamen ayrı yollar izlemesini istemiyor* Yönetim ekibi, çevik yazılım geliştirme süreçlerine iş birliği araçlarının entegre edilmesi konusunda yenilikçi bir yaklaşım benimsedi. Bu nedenle, **CollabOvation’ın belirli özellikleri, ProjectOvation’a isteğe bağlı bir ek paket olarak sunulacak.**  
+
+Bu entegrasyon sayesinde, proje planlama, özellik ve hikâye tartışmaları, ekip ve ekipler arası iletişim ve destek süreçleri için iş birliği araçları sağlanmış olacak. SaaSOvation’ın tahminlerine göre, ProjectOvation abonelerinin %60’ından fazlası CollabOvation özelliklerini ek paket olarak satın alacak. 
+
+Bunun da ötesinde, **bu tür ek paket satışları genellikle, ilgili ana ürünün de tam sürümüne geçişi teşvik eder.** Bir kez satış kanalı oluşturulduğunda ve yazılım geliştirme ekipleri proje yönetiminde iş birliğinin gücünü gördüğünde, bu heyecan kurumsal seviyede tam iş birliği paketinin benimsenmesine yol açabilir. Bu nedenle, **SaaSOvation, ProjectOvation satışlarının en az %35’inin tam CollabOvation paketine geçişle sonuçlanacağını tahmin ediyor.** Üstelik, bu tahmin muhafazakâr bir yaklaşım olarak değerlendiriliyor ve bu başarının oldukça büyük olacağı öngörülüyor.
+
+CollabOvation geliştirme ekibi, şirkette ilk olarak kurulan ekip oldu. Bu ekipte birkaç kıdemli geliştirici yer alırken, çoğunluk orta seviyedeki geliştiricilerden oluşuyordu. İlk toplantılarda **Domain-Driven Design (DDD)** metodolojisinin benimsenmesine karar verildi. Ekipteki iki kıdemli geliştiriciden biri, önceki iş yerinde DDD’nin bazı taktiksel desenlerini kullanmıştı. Ancak, daha deneyimli bir DDD uygulayıcısı olsaydı, bu yaklaşımın tam anlamıyla DDD olmadığını fark ederdi. Aslında yaptığı şey, genellikle **DDD-Lite** olarak adlandırılan bir yaklaşımdı.
+
+**DDD-Lite**, DDD’nin bazı taktiksel desenlerini seçici bir şekilde kullanmak, ancak:  
+
+- Ubiquitous Language’i (Ortak Dil) keşfetmeye, yakalamaya ve geliştirmeye tam anlamıyla odaklanmamak,
+- Bounded Context (Sınırlı Bağlamlar) ve Context Mapping (Bağlam Haritalaması) kavramlarını atlamak anlamına geliyor.  
+
+Bu yöntem **daha çok teknik bir bakış açısıyla, doğrudan teknik problemleri çözmeye odaklanıyor.** Faydaları olabilse de, stratejik modelleme içermediği sürece getirisi sınırlı kalıyor.
+
+SaaSOvation ekibi **bu yöntemi benimsemişti.** Ancak **Bounded Context’leri ve Alt Alanları (Subdomains) tam anlamıyla anlamadıkları için bazı sorunlarla karşılaştılar.**  
+
+Sorunlar yaşansa da, SaaSOvation daha büyük tuzaklardan kaçmayı başardı. Bunun temel sebebi, iki ana ürününün doğal olarak ayrı Bounded Context’ler oluşturmasıydı. Bu durum, CollabOvation ve ProjectOvation modellerinin ayrı tutulmasını sağladı. Ancak bu tamamen bir şans eseri gerçekleşti. Ekibin Bounded Context kavramını bilinçli olarak uygulamamış olması, yaşadıkları bazı sorunların kaynağıydı.
+
+Sonuç olarak: **_Ya öğrenirsiniz, ya da başarısız olursunuz._**
+
+---
+
+SaaSOvation ekibinin DDD'yi eksik bir şekilde kullanmasının incelenebilir olması bizim için faydalı. Ekip, stratejik tasarımı daha iyi kavrayarak hatalarından ders çıkarmayı başardı. **CollabOvation ekibinin yaptığı düzenlemelerden siz de öğreneceksiniz,** tıpkı ProjectOvation ekibinin, kardeş ve iş ortağı projenin ilk aşamalarına dair retrospektiflerden faydalandığı gibi. Tam hikayeyi görmek için şu bölümlere göz atabilirsiniz:  
+- Alt Alanlar (Subdomains) (2)
+- Sınırlı Bağlamlar (Bounded Contexts) (2)
+- Bağlam Haritaları (Context Maps) (3)
+
+---
+
+## Sonuç
+
+Evet, bu bölüm DDD'ye oldukça cesaret verici bir başlangıç oldu. Şimdiye kadar, siz ve ekibinizin aslında gelişmiş bir yazılım geliştirme tekniğinde başarılı olabileceğinizi iyi bir şekilde hissetmiş olmalısınız. Ben de aynı şekilde düşünüyorum. Tabii ki, her şeyi basite indirgemeyeceğiz. **DDD'yi uygulamak gerçek bir çaba gerektirir.** Eğer bu kolay olsaydı, herkes harika kodlar yazıyor olurdu ve bunun olmadığını biliyoruz. O yüzden hazırlıklı olun. Bu çaba değecek çünkü tasarımınız, yazılımınızın nasıl çalıştığına tam olarak uyacak.
+
+Şimdiye kadar öğrendikleriniz:
+
+- DDD'nin projeleriniz ve ekipleriniz için neler yapabileceğini, alan karmaşıklığıyla nasıl başa çıkabileceğinizi keşfettiniz.
+- Projelerinizi değerlendirme ve DDD yatırımına değip değmediğini öğrenme yolunu öğrendiniz.
+- DDD'ye alternatif olan yaygın yaklaşımları ve bu yaklaşımların neden çoğu zaman problemlere yol açtığını incelediniz.
+- DDD'nin temellerini kavradınız ve projelerinizde ilk adımlarınızı atmaya hazırsınız.
+- DDD'yi yönetiminize, alan uzmanlarına ve teknik ekip üyelerinize nasıl satacağınızı öğrendiniz.
+- DDD'nin zorluklarıyla başa çıkarken nasıl başarılı olacağınızı öğrenmek için gerekli bilgilere sahipsiniz.
+
+Sıradaki adımlarımız şu şekilde: **Sonraki iki bölüm, son derece önemli olan stratejik tasarım üzerine olacak** ve ardından **DDD ile yazılım mimarileri üzerine bir bölüm gelecek.** Bu, **taktiksel modelleme** ile ilgili sonraki bölümlere geçmeden önce kavrayışınızı güçlendirecek çok önemli bir konudur.
