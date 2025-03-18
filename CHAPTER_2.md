@@ -53,6 +53,7 @@ Bu çevrimiçi perakendecinin **alanı (Domain)**, dört ana alt alandan (Subdom
 4.  Sevkiyat (Shipping)
 
 ![Figure 2.1: A Domain with Subdomains and Bounded Contexts](https://i.sstatic.net/S3KV7l.png)
+
 **Figure 2.1:** A Domain with Subdomains and Bounded Contexts
 
 Şimdiye kadar her şey oldukça basit görünüyor. Ancak tek bir ekstra detay eklersek, örneğimiz biraz daha karmaşık hale gelecek. **Şirketin bir de Stok Yönetimi (Inventory) ile ilgilenmesi gerektiğini düşünelim.** Bu noktada, sistemin fiziksel alt sistemleri ve mantıksal Alt Alanlarını inceleyelim.
@@ -161,6 +162,7 @@ Bu ilişkiler her zaman belirli bir entegrasyon türünü içerir ve "Bağlam Ha
 Alt Alanlar ve Sınırlandırılmış Bağlamlar hakkında bir anlayış geliştirdikten sonra, Şekil 2.2’de gösterilen farklı bir Alanın soyut bir görünümünü ele alalım. Bu, herhangi bir alanı temsil edebilir. Belki de sizin çalıştığınız alanı ☺. Bu kez, belirli isimleri kaldırdım, böylece boşlukları kendi zihninizde doldurabilirsiniz. Doğal olarak, iş hedeflerimiz sürekli olarak rafine edilmekte ve genişlemektedir. Bu süreç, değişen Alt Alanlara ve içlerindeki modellere yansımaktadır. Bu diyagram, yalnızca belirli bir bakış açısıyla ve belirli bir zaman diliminde iş alanının tamamını yakalıyor. Ancak, bu perspektif kısa ömürlü olabilir ve zamanla değişebilir.
 
 ![Figure 2.2: An abstract business Domain that includes Subdomains and Bounded Contexts](https://www.bdabek.pl/wp-content/uploads/2020/09/bc-vs-subdomain.png)
+
 **Figure 2.2:** An abstract business Domain that includes Subdomains and Bounded Contexts
 
 ---
