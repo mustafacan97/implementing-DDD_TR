@@ -349,4 +349,147 @@ Eğer avantajına olursa, farklı bir haritalama hizmetine abone olmayı seçebi
 
 Bu bölümün geri kalan kısmında, Bounded Context'lerin, DDD için temel bir çözüm alanı modelleme aracı olarak önemini ele alacağız. Context Maps (Bağlam Haritaları) başlığında, farklı ama ilişkili Ubiquitous Dillerin (Universal Diller) haritalanması ve Bounded Context'lerin entegrasyonu konusunun önemi üzerinde durulacaktır.
 
-** 62. sayfada kaldım
+## Bounded Contextleri Anlamlandırma
+
+Unutmayın, Bounded Context (Sınırlı Bağlam), bir domain modelinin var olduğu **açık bir sınırdır**. Bu domain modeli, Ubiquitous Language’i (Evrensel Dil) bir yazılım modeli olarak ifade eder. Sınırın belirlenme sebebi, içerideki her kavramın, özelliklerin ve işlemlerin özel bir anlama sahip olmasıdır. Eğer böyle bir modelleme ekibinin üyesi olsaydınız, Context’inizdeki her kavramın ne anlama geldiğini tam olarak bilirdiniz.
+
+> ***Bounded Context: Açık ve Dil Odaklıdır***
+>
+> Bir Bounded Context, bir domain modelinin var olduğu açık bir sınırdır. Bu sınırın içinde, Ubiquitous Language’in tüm terimleri ve ifadeleri kesin ve belirli bir anlama sahiptir. Model, bu dili tam doğrulukla yansıtacak şekilde oluşturulur.
+
+Genellikle, iki farklı modelde aynı veya benzer isimlere sahip nesneler farklı anlamlara gelir. Her bir modelin çevresine açık bir sınır yerleştirildiğinde, her bir bağlamdaki kavramların anlamları netleşir. Bu yüzden, **Bounded Context** esas olarak **dilsel bir sınırdır**. Bounded Contextleri doğru şekilde kullanıp kullanmadığınızı belirlemek için bu mantıksal çıkarımları bir referans noktası olarak kullanmalısınız.
+
+Bazı projeler, **tüm organizasyon için kapsayıcı bir model oluşturma tuzağına** düşer. Bu yaklaşımda, her kavramın tek ve evrensel bir anlama sahip olması için tüm paydaşların mutabakata varması amaçlanır. Ancak bu **yanıltıcı bir yaklaşımdır.** Öncelikle, tüm paydaşların tüm kavramlar için tek ve saf bir küresel anlam üzerinde anlaşmasını sağlamak neredeyse imkânsızdır. Büyük ve karmaşık organizasyonlarda, tüm paydaşları bir araya getirmek bile mümkün olmayabilir, kaldı ki herkesin aynı kavramlar üzerinde tam bir mutabakata varmasını beklemek gerçekçi değildir. Küçük ölçekli bir şirkette dahi, tek bir küresel kavram tanımı oluşturmak ve bunun kalıcılığını sağlamak genellikle başarısız olur. Bu nedenle, en iyi strateji, farklılıkların her zaman var olduğunu kabul etmek ve Bounded Context kullanarak her domain modelini bu farklılıkları net bir şekilde tanımlayacak şekilde ayrıştırmaktır.
+
+Bir Bounded Context, tek tip bir **proje çıktısının (artifact)** oluşturulmasını zorunlu kılmaz. Bir bileşen, belge veya diyagram değildir. Yani, bir JAR dosyası ya da DLL olarak tanımlanmaz, ancak ilerleyen bölümlerde anlatılacağı gibi Bounded Context'leri dağıtmak için bu tür bileşenler kullanılabilir.
+
+Örneğin, bir Bankacılık Bağlamındaki **Account** ile bir Edebiyat Bağlamındaki **Account** kavramı birbirinden tamamen farklıdır. Her iki bağlam için ortak bir tanım oluşturmaya çalışmak yanlış olur. Bunun yerine, **her bağlamı kendi Bounded Context’i içinde ele almak** en doğru yaklaşımdır.
+
+| Bağlam | Anlam | Örnek |
+|  --------  |  -------  | ------- |
+| Bankacılık | Bir Hesap, bir müşterinin bankadaki mevcut mali durumunu gösteren borç ve alacak işlemlerinin kaydını tutar. | Çek Hesabı ve Tasarruf Hesabı |
+| Edebiyat | Bir Hesap, belirli bir zaman aralığında bir veya daha fazla ilgili olay hakkında bir dizi edebi ifadedir. | Amazon.com kitap satıyor _Into Thin Air: A Personal Account of the Mt. Everest Disaster_ |
+
+Şekil 2.5’e baktığımızda, "Account" türlerinin adları açısından onları ayırt eden belirgin bir özellik olmadığını görüyoruz. Ancak her bir **kavramsal konteynerin**—yani Bounded Context’in—adına bakarak farkları anlayabiliriz.
+
+Bu iki Bounded Context muhtemelen aynı Domain (Alan) içinde yer almıyor. Burada önemli olan, **bağlamın (Context) her şeyden üstün olduğu gerçeğini vurgulamaktır**.
+
+> ***Bağlam Her Şeydir***
+>
+> Özellikle DDD uygularken bağlam en kritik unsurdur. Finans dünyasında "security" (menkul kıymet) kelimesi sıkça kullanılır. Örneğin, _Securities and Exchange Commission (SEC)_, "security" terimini yalnızca hisse senetleri gibi finansal varlıklar için kullanır. _Vadeli işlemler (Futures Contracts)_ ise emtia (commodity) olarak kabul edilir ve SEC’in yetki alanına girmez. Ancak bazı finansal firmalar, vadeli işlemleri (Futures) "security" olarak adlandırabilir ve bunları Standart Tür (6) Vadeli İşlemler olarak etiketleyebilir.
+> Bu terimlendirme ideal mi? **Cevap: Kullandığınız Domain’e bağlıdır.** Bazı uzmanlar vadeli işlemleri "security" olarak adlandırmanın yanlış olduğunu savunabilir. Bazıları ise bu kullanımın bağlama uygun olduğunu düşünebilir. Ayrıca, **bağlam sadece teknik değil, kültürel bir unsurdur**.  
+Örneğin, Vadeli İşlemler ile uğraşan belirli bir finans firmasının iç kültüründe, "Security" kelimesi yaygın olarak kullanılıyorsa, bu firma için en iyi Ubiquitous Language kullanımı bu olabilir. Sonuç olarak: ***Terimlerin doğru olup olmadığı, içinde bulunduğunuz bağlama bağlıdır.***
+
+![Figure 2.5](./images/figure-2-5.png)
+
+**Figure 2.5:** İki farklı Bounded Context altındaki hesap nesneleri tamamen farklı anlamlara sahiptir, anlamlarını ancak her bir Bounded Context adını göz önünde bulundurarak bilirsiniz.
+
+Kurumsal yazılım geliştirme süreçlerinde, farklı bağlamlarda (Context) kullanılan terimlerin anlamları genellikle ince farklılıklar taşır. Bunun nedeni, her ekibin kendi bağlamındaki Ubiquitous Language’ı  dikkate alarak kavramlara isim vermesidir. Bir terim, bir bağlamda farklı bir anlama gelirken, başka bir bağlamda farklı bir şekilde yorumlanabilir. ***Örneğin***, bankacılık sektöründe iki farklı bağlamı ele alalım:
+
+-   **Vadesiz Hesap (Checking Context)**
+-   **Tasarruf Hesabı (Savings Context)**
+
+Her iki bağlamda da Account (Hesap) kavramı kullanılabilir, ancak her biri kendi Bounded Context’inde farklı bir anlama sahiptir. Bu nedenle, bir bağlam içinde bir terimi rastgele farklılaştırmak gereksizdir. Ancak, ekibinizin gereksinimlerine bağlı olarak daha açıklayıcı isimler kullanmak mümkündür.
+
+Eğer farklı Bounded Context’ler arasında entegrasyon gerekiyorsa, **veri dönüşümlerinin (mapping)** yapılması gerekir. Bu dönüşümler **DDD'nin en zorlayıcı alanlarından biridir** ve dikkatlice ele alınmalıdır. Normalde bir nesneyi kendi bağlamının dışına çıkarmayız, ancak birden fazla bağlamda ortak bir veri alt kümesi paylaşılabilir.
+
+***Yayıncılık Örneği***: "Book" Kavramı Farklı Bağlamlarda Nasıl Modellenir? Bir yayınevinin kitapların yaşam döngüsünü yönetmesi gerektiğini düşünelim. Yayıncılık sürecinde bir kitabın şu aşamalardan geçtiğini varsayalım:
+
+- Kitap fikrinin oluşturulması ve önerilmesi
+- Yazarlarla sözleşme yapılması
+- Kitabın yazım ve editoryal sürecinin yönetilmesi
+- Tasarım süreci (sayfa düzeni, illüstrasyonlar vb.)
+- Kitabın farklı dillere çevrilmesi
+- Baskı ve dijital sürümlerinin üretilmesi
+- Pazarlama faaliyetleri
+- Satış süreci
+- Fiziksel kitabın depodan müşterilere gönderilmesi
+
+***Her aşamada*** "Book nesnesi farklı bir anlama sahiptir:
+
+1. _Editörler için_ "Book", taslaklar, yorumlar ve düzeltmeler içeren bir koleksiyondur.
+2. _Grafik tasarımcılar_ için sayfa düzenlerinden ve illüstrasyonlardan oluşur.
+3. _Üretim ekibi_ için baskı öncesi materyaller ve kalıplardan ibarettir.
+4. _Pazarlama ekibi_ için kitap kapağı ve açıklamalar yeterlidir.
+5. _Lojistik ekibi_ için sadece kitap kimliği, envanter bilgileri, ağırlık ve boyut önemlidir.
+
+Eğer her departmanın tüm detayları içeren merkezi bir model oluşturmaya çalışırsak, fikir birliği sağlamak zor olur (herkes farklı verilerle çalışmak ister), gereksiz karmaşıklık yaratır ve yazılım geliştirme süreci uzar ve herkesin ihtiyacına uygun tek bir model oluşturmak neredeyse imkânsızdır. ***Çözüm:*** içinHer süreci ayrı bir Bounded Context içinde modellemek gerekir. Book her bağlamda kimlik bazında aynı olabilir, ancak modeli her bağlam için farklı olmalıdır. Bu sayede her ekip, yalnızca kendi ihtiyaç duyduğu verilerle çalışır ve yazılımın teslimi hızlanır.
+
+SaaSOvation işbirliği ekibi modelleme zorluklarını şu şekilde çözüyor:
+
+1. **Collaboration Context** kullanıcılar **User** olarak değil, **yaptıkları role göre tanımlanır**:
+	- Author (Yazar)
+    - Owner (Sahip)
+    - Participant (Katılımcı)
+    - Moderator (Moderatör)
+2. **Identity and Access Context** kullanıcılar **User olarak tanımlanır**:
+    -   Kullanıcı adı
+    -   Kişisel bilgiler
+    -   İletişim bilgileri
+
+Örneğin, **bir Moderatör nesnesi doğrudan oluşturulmaz**. Öncelikle **Identity and Access Context içinde bir User nesnesinin varlığı doğrulanır** ve ardından ilgili rol atanarak bir **Moderator** nesnesi oluşturulur. Bu süreç Şekil 2.6'da gösterilmektedir.
+
+![Figure 2.6](./images/figure-2-6.png)
+
+**Figure 2.6:** Bağlamındaki Moderatör nesnesi, farklı bir bağlamdaki Kullanıcı ve Role dayanır.
+
+> ***Alıştırma Zamanı***
+> 
+> • Alanınızda birden fazla Bounded Context içinde var olan, ancak ince farklılıklara sahip bazı kavramları belirleyebilir misiniz?  
+> • Bu kavramların doğru şekilde ayrılıp ayrılmadığını belirleyin ya da geliştiricilerin kodu basitçe iki bağlama da kopyalayıp kopyalamadığını kontrol edin.
+
+<br>
+
+> Genellikle, doğru bir ayrım yapıldığını, benzer nesnelerin farklı özelliklere ve işlemlere sahip olmasıyla anlayabilirsiniz. Bu durumda sınır, kavramları uygun şekilde ayırmıştır. Ancak, eğer aynı nesneleri birden fazla bağlamda tamamen aynı şekilde görüyorsanız, bu muhtemelen bir modelleme hatasıdır—tabii ki iki Bounded Context, **Shared Kernel (Paylaşılan Çekirdek)** kullanmıyorsa.
+
+### Modelin Ötesinde Daha Fazla Alan (Room for More than the Model)
+
+Bounded Context yalnızca domain modelini kapsamak zorunda değildir. Doğru, model bu kavramsal alanın ana öğesidir, ancak Bounded Context yalnızca modelle sınırlı değildir. Çoğu zaman bir sistemi, bir uygulamayı veya bir iş hizmetini de kapsar. Bazen, **Generic Subdomain gibi daha basit yapılar, yalnızca bir domain modeli içerebilir.** Bir Bounded Context içinde genellikle aşağıdaki sistem bileşenleri bulunur:
+
+- **Veri tabanı şeması**: Eğer model veri tabanı şema tasarımını yönlendiriyorsa, **bu şema da Bounded Context'in içinde yer alır.** Bunun nedeni, şemanın doğrudan modelleme ekibi tarafından tasarlanması, geliştirilmesi ve sürdürülmesidir. Tablo ve sütun adları doğrudan modelde kullanılan isimleri yansıtmalıdır, farklı bir tarza çevrilmemelidir.
+
+Örneğin, modelimizde `BacklogItem` adlı bir sınıf olduğunu ve bu sınıfın `backlogItemId` ve `businessPriority` adında `Value Object` özelliklerine sahip olduğunu varsayalım:
+
+```
+public class BacklogItem extends Entity  {
+	... 
+	private BacklogItemId backlogItemId;
+	private BusinessPriority businessPriority;
+	... 
+}
+```
+
+Bunların benzer şekilde veritabanıyla eşleştirildiğini görmeyi bekleriz:
+
+```
+CREATE TABLE `tbl_backlog_item` (
+	... 
+	`backlog_item_id_id` varchar(36) NOT NULL,
+	`business_priority_ratings_benefit` int NOT NULL,
+	`business_priority_ratings_cost` int NOT NULL,
+	`business_priority_ratings_penalty` int NOT NULL,
+	`business_priority_ratings_risk` int NOT NULL,
+	... 
+) ENGINE=InnoDB;
+```
+
+Öte yandan, eğer bir veri tabanı şeması önceden mevcutsa veya ayrı bir veri modelleme ekibi çelişkili tasarımlar dayatıyorsa, bu durumda **şema, domain modelinin bulunduğu Bounded Context içinde yer almaz.**
+
+Eğer **kullanıcı arayüzü (UI)** modelin görselleştirilmesini sağlıyor ve modelin davranışlarını tetikliyorsa, bu bileşenler de Bounded Context içinde yer alır. Ancak, bu, domain modelini doğrudan kullanıcı arayüzünde modellememiz gerektiği anlamına gelmez. **Smart UI Anti-Pattern’i** (Akıllı UI Karşı Deseni) reddetmeliyiz. Domain’e ait kavramları, sistemin farklı alanlarına yaymak yerine model içinde tutmalıyız.
+
+Sistemin kullanıcıları her zaman insanlar olmayabilir; diğer bilgisayar sistemleri de olabilir. Web servisleri gibi bileşenler olabilir. Model ile etkileşim sağlamak için RESTful kaynakları kullanabiliriz **(Open Host Service modeli)**. Alternatif olarak **SOAP veya mesajlaşma servis uç noktaları** kullanılabilir. Bu tür tüm servis tabanlı bileşenler de Bounded Context’in içinde yer alır.
+
+UI bileşenleri ve service-oriented endpoints, Uygulama Servislerine yönlendirme yapar. Application Services, güvenlik ve işlem yönetimi sağlar. Aynı zamanda model için bir **Facade (Arayüz)** görevi görür. Kullanım senaryolarını (use case flow) domain mantığına dönüştüren görev yöneticileridir. Application Services de Bounded Context içinde yer alır.
+
+> Eğer DDD’nin farklı mimari stillerle nasıl uyum sağladığını görmek istiyorsanız, **Architecture (4)** bölümüne bakabilirsiniz. Ayrıca, **Application Services, Application (14)** bölümünde özel olarak ele alınmaktadır. Her iki bölümde de faydalı diyagramlar ve kod örnekleri bulunmaktadır.
+
+Bounded Context, öncelikli olarak Ubiquitous Language (Ortak Dil) ve domain modelini kapsar, ancak domain modeliyle etkileşimi sağlamak ve onu desteklemek için var olan unsurları da içerir. Mimari ile ilgili her bir unsuru doğru yerde tutmaya özen gösterin.
+
+> ***Alıştırma Zamanı***
+>
+> - Beyaz tahta diyagramınızda belirlediğiniz her bir Bounded Context’e bakın. Bu bağlamları düşündüğünüzde, **sadece domain modelini mi yoksa başka bileşenleri de sınır içinde hayal ediyorsunuz?
+> - Eğer bir UI ve bir dizi Application Service varsa, bunların da sınır içinde olduğundan emin olun. (Bunları nasıl temsil edeceğiniz konusunda geniş bir alana sahibiz. Fikir edinmek için Şekil 2.8, 2.9 ve 2.10'a bakabilirsiniz.)
+>  - Eğer veritabanı şeması veya başka bir kalıcı veri deposu modeliniz için geliştirilmişse, onun da sınır içinde olduğundan emin olun.** (Şekil 2.8, 2.9 ve 2.10, veritabanı şemasını temsil etmenin bir yolunu gösterir.)
+
+
+** 68. sayfada kaldım
