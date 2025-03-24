@@ -565,6 +565,7 @@ Windows/.NET projelerinde _Bounded Context_ dağıtımı ***DLL dosyaları*** ku
 Örnekler, sıfırdan geliştirilen bir ortamı temsil ettiğinden, seçilen üç Bounded Context sonunda en arzu edilen şekilde kendi Alt Alanları (Subdomains) ile birebir hizalanmıştır. Ancak, ekip başlangıçta bunu başaramamış ve bu da önemli bir ders öğretmiştir. Nihai sonuç Şekil 2.7'de gösterilmektedir.
 
 ![Figure 2.7](./images/figure-2-7.png)
+
 **Figure 2.7:** Tamamen hizalanmış Subdomains'lerdeki örnek Bounded Context'lerin değerlendirme görünümü
 
 Aşağıdaki materyal, bu üç modelin gerçekçi, modern bir kurumsal çözümü nasıl oluşturduğunu göstermektedir. Gerçek dünyadaki her projede her zaman birden fazla Bounded Context bulunur. Bunlar arasındaki entegrasyon, günümüz kurumsal sistemleri için önemli bir senaryodur. Bounded Context ve Alt Alanları (Subdomains) anlamanın yanı sıra, Context Mappin ve Entegrasyonu (13. Bölüm) da kavramamız gerekir.
@@ -593,6 +594,7 @@ Geniş bir özellik yelpazesini desteklerken, bu işbirliği araçlarının her 
 Şimdi, ekibin deneyimine geçelim...
 
 ![Figure 2.8](./images/figure-2-8.png)
+
 **Figure 2.8:** Ubiquitous Dili, sınırın içine neyin ait olduğunu belirler. Okunabilirlik için bazı model öğeleri gösterilmemiştir. Aynı durum UI ve Application Service'ler için de geçerlidir.
 
 ---
@@ -759,6 +761,7 @@ Bu, yeni bir Bounded Context'i oluşturur—Identity and Access Context—ve bu,
 Şekil 2.9'da gösterildiği gibi, Identity and Access Context _çoklu kiracıyı (multitenant)_ destekler. Bir SaaS ürünü geliştirirken bu, açıkça gereklidir. Her kiracı ve her kiracının sahip olduğu nesne varlıklarının tamamen benzersiz bir kimliği olacak, böylece her kiracı diğerlerinden mantıksal olarak izole edilir. Sistem kullanıcıları, yalnızca davet yoluyla kendinize ait bir hizmet üzerinden kayıt edilir. Güvenli erişim, bir kimlik doğrulama servisi aracılığıyla sağlanır ve şifreler her zaman yüksek seviyede şifrelenir. Kullanıcı grupları ve iç içe geçmiş gruplar, tüm organizasyon ve en küçük ekipler dahil olmak üzere sofistike kimlik yönetimi sağlar. Sistem kaynaklarına erişim, basit, zarif ancak güçlü bir rol tabanlı izin sistemi ile yönetilir.
 
 ![Figure 2.9](./images/figure-2-9.png)
+
 **Figure 2.9:** Sınırın içindeki her şey Ubiquitous Language'e göre bağlam içindedir. Bu Bounded Context'de, bazıları modelde ve bazıları diğer katmanlarda olmak üzere başka bileşenler de vardır, ancak okunabilirlik açısından burada gösterilmemiştir. Aynı şey UI ve Application Services için de geçerlidir.
 
 Daha ileri bir adım olarak, modeldeki davranışlar, böyle bir durumu takip edenler için **önemli durum dönüşümleri** oluşturduğunda, ***Domain Events (8)*** yayınlanır. Bu Etkinlikler genellikle, **geçmiş zamanla birleşen fiillerle** yapılan isimlerden oluşur, örneğin _TenantProvisioned_, _UserPasswordChanged_, _PersonNameChanged_ ve diğerleri.
@@ -784,6 +787,7 @@ Neyse ki, teknik ekip **CollabOvation** modelindeki karmaşık sorunlardan ders 
 Şekil 2.10, stratejik tasarım zihniyetini benimsemenin bir sonucu olarak, ProjectOvation ekibinin **tüketicilerini** **Ürün Sahipleri** ve **Takım Üyeleri** olarak doğru bir şekilde düşündüğünü göstermektedir. Sonuçta, bu rol, Scrum uygulayıcıları tarafından oynanan proje üyeliği rolleridir. Kullanıcılar ve roller, ayrı **Identity and Access Context** içinde yönetilmektedir. Bu Bounded Context kullanılarak, **self-service**, abonelerin kişisel kimliklerini yönetmelerini sağlar. Yönetim kontrolleri, **üretim sahiplerinin** ürün takım üyelerini belirlemelerini sağlar. Roller doğru şekilde yönetildiğinde, Ürün Sahipleri ve Takım Üyeleri Agile Project Management Context içinde oluşturulabilir. Projenin geri kalanı, ekip agile proje yönetimi için Ubiquitous Language'i dikkatle oluşturulmuş bir alan modeli ile yakalamaya odaklanırken fayda sağlayacaktır.
 
 ![Figure 2.10](./images/figure-2-10.png)
+
 **Figure 2.10:** Bu Sınırlı Bağlamın Ubiquitous Language'i, Scrum tabanlı çevik ürünler, iterasyonlar ve sürümlerle ilgilidir. Okunabilirlik için, UI ve Appilcation Services de dahil olmak üzere bazı bileşenler burada gösterilmemiştir.
 
 
