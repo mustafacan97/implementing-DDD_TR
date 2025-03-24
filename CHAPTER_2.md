@@ -491,5 +491,261 @@ Bounded Context, öncelikli olarak Ubiquitous Language (Ortak Dil) ve domain mod
 > - Eğer bir UI ve bir dizi Application Service varsa, bunların da sınır içinde olduğundan emin olun. (Bunları nasıl temsil edeceğiniz konusunda geniş bir alana sahibiz. Fikir edinmek için Şekil 2.8, 2.9 ve 2.10'a bakabilirsiniz.)
 >  - Eğer veritabanı şeması veya başka bir kalıcı veri deposu modeliniz için geliştirilmişse, onun da sınır içinde olduğundan emin olun.** (Şekil 2.8, 2.9 ve 2.10, veritabanı şemasını temsil etmenin bir yolunu gösterir.)
 
+### Bounded Context’lerin Boyutu
 
-** 68. sayfada kaldım
+Bir Bounded Context kaç Modül (Modules), Aggregate (Kümeler), Olay (Events) ve Servis (Services) içermelidir? Bu soru, "Bir ip ne kadar uzun olmalıdır?" sorusuna benzer. ***Bir Bounded Context, kendi Ubiquitous Language'ını tam olarak ifade edebilecek kadar büyük olmalıdır.***
+
+Çekirdek Domain’e (Core Domain) gerçekten ait olmayan kavramlar ayrıştırılmalıdır. Eğer bir kavram Ubiquitous Language içinde yer almıyorsa, modelinize dahil edilmemelidir. Eğer farkında olmadan gereksiz kavramlar modelinize sızdıysa, bunları kaldırmalısınız. Bu kavramlar muhtemelen Destekleyici (Supporting) veya Genel Alt Domain’de (Generic Subdomain) yer almalıdır—ya da hiç model içinde bulunmamalıdır.
+    
+Ancak, Çekirdek Domain’e ait olan kavramları yanlışlıkla çıkarmamaya dikkat edin. Modeliniz, Ubiquitous Language’ın tüm zenginliğini eksiksiz şekilde ifade etmelidir. Hiçbir temel kavram dışarıda bırakılmamalıdır. Bu dengeyi sağlamak için iyi bir değerlendirme süreci gereklidir. Context Map gibi araçlar, ekibinizin doğru kararlar almasına yardımcı olabilir.
+    
+Bu sürecin zorluğunu anlamak için "Amadeus" filminde geçen bir sahne güzel bir örnektir. Avusturya İmparatoru II. Joseph, Mozart’a yeni eserini dinledikten sonra, eserin "çok fazla nota içerdiğini" söyler. Mozart ise ***"Tam olarak ihtiyacım olan kadar nota var, ne bir eksik ne bir fazla."*** şeklinde yanıt verir. DDD'de de modelleme yaparken tam olarak bu zihniyet benimsenmelidir. Bir Bounded Context içindeki domain kavramları ne eksik ne de fazla olmalıdır—tam gerektiği kadar olmalıdır.
+
+Bu dengeyi sağlamak Mozart’ın bir senfoni bestelemesi kadar kolay değildir. Modeli sürekli gözden geçirmeli, gerektiğinde kavramları eklemeli veya çıkarmalı, ilişkileri değiştirmeli ve modelin nasıl işlediğini değerlendirmelisiniz. Her yinelemede model hakkında varsayımlarımızı sorgularız. Bu süreç, hangi kavramların gerçekten Çekirdek Domain’e ait olduğunu anlamamıza yardımcı olur. DDD ilkelerine bağlı kalarak Bounded Context ve Context Map gibi araçları kullanarak modelimizi sürekli geliştiririz. Ancak, rastgele ayrıştırma kuralları uygulamaktan kaçınmalıyız. Modelimizi DDD prensiplerine uygun şekilde tasarlamalıyız.
+
+> ***Domain Modellerinin Güzel Melodisi***
+> Eğer modellerimiz bir müzik olsaydı, tamlık, saflık, güç ve hatta zarafet ve güzellik içeren eşsiz bir melodiye sahip olurlardı.
+
+Eğer bir Bounded Context'i gereğinden fazla sıkı sınırlandırırsak, hayati ancak eksik olan bağlamsal kavramlardan dolayı büyük boşluklar oluşur. Öte yandan, modele iş çözümünün özünü ifade etmeyen kavramları eklemeye devam edersek, bağlamı o kadar bulanık hale getiririz ki esas olanı görmek ve anlamak imkânsız hale gelir.
+
+Hedefimiz nedir? Eğer modellerimiz bir müzik olsaydı, tamlık, saflık, güç ve hatta zarafet ve güzellik içeren eşsiz bir melodiye sahip olurlardı. İçerisindeki **Modüller**, **Aggregate**’ler, **Events** ve **Services** ne gereğinden fazla ne de eksik olurdu. Bu modeli “dinleyenler” asla garip ve uyumsuz bir sesin nereden geldiğini merak etmezlerdi. Aynı şekilde, eksik nota sayfalarından dolayı tam bir sessizlik anları yaşanmazdı.
+
+Yanlış boyutta bir **Bounded Context** oluşturmamıza ne sebep olabilir? Mimari etkilerin, Ubiquitous Language yerine bize yön vermesine izin vermek. Örneğin, kullanılan platform, framework veya altyapının bileşenleri paketleme ve dağıtma biçimi, bizi Bounded Context'leri teknik sınırlar olarak görmeye itebilir.
+
+Geliştirici ekiplerinin iş yükünü dağıtmak için bağlamları bölmek. Proje yöneticileri ve teknik liderler, küçük görevlerin yönetilmesinin daha kolay olduğunu düşünebilir. Ancak bu sınırları yalnızca görev dağıtımı amacıyla dayatmak, bağlamsal modellemeye zarar verir. Teknik kaynakları yönetmek için sahte sınırlar koymaya gerek yoktur.
+
+***Önemli soru şudur:*** Alan uzmanlarının dili, gerçek bağlamsal sınırların nerede olduğunu nasıl gösteriyor?
+
+Eğer bağlamlar, sadece teknik bileşenler veya geliştirici yönetimi için yapay olarak belirlenirse, dil bölünür ve ifade gücünü kaybeder. Bunun yerine Core Domain’e odaklanmalı ve doğal olarak birbirine uyum sağlayan kavramları tek bir bağlama (Bounded Context) yerleştirmeliyiz. Bazen bu minyatür Bounded Context’ler sorununu Modülleri dikkatlice kullanarak önleyebiliriz. Dağıtılmış birçok hizmetin aslında tek bir Bounded Context içinde gruplanabileceğini görebiliriz. Ayrıca, Modüller, geliştirici sorumluluklarını bölmenin ve görevleri uygun bir taktiksel yaklaşımla yönetmenin daha iyi bir yolu olabilir.
+
+> ***Alıştırma Zamanı***
+> - Mevcut modelinizin Bounded Context’ini, büyük ve düzensiz şekilli bir elips olarak çizin.
+> > Henüz açık bir modeliniz olmasa bile, yine de **dil (Language)** hakkında düşünün.
+> - Elipsin içine, kodunuzda kesinlikle uyguladığınız ana kavramların isimlerini yazın. Orada olması gereken ama eksik olan kavramları fark edebiliyor musunuz? Olmaması gerekirken bulunan kavramlar var mı? Bu sorunları nasıl çözmelisiniz?
+
+----------
+
+> ***DDD Uygularken Dil Odaklı Olmaya Dikkat Edin***
+>
+> Özetle: Eğer Language odaklı bir yaklaşım izlemiyorsanız, alan uzmanlarıyla çalışmıyor ve onları dinlemiyorsunuz demektir. Bounded Context’lerinizin boyutunu dikkatlice değerlendirin. Çok hızlı bir şekilde onları küçültmeye çalışmayın.
+
+### Teknik Bileşenlerle Uyum Sağlamak
+
+Bounded Context’i teknik bileşenler açısından düşünmek zarar vermez. Ancak unutulmaması gereken nokta, teknik bileşenlerin Bounded Context’i tanımlamadığıdır. Şimdi, bu bileşenlerin nasıl oluşturulup dağıtıldığına bakalım.
+
+Eclipse veya IntelliJ IDEA gibi bir **IDE kullanıldığında**, Bounded Context genellikle **tek bir proje** içinde bulunur. Visual Studio ve .NET kullanırken, UI, Application Services ve domain modeli farklı projelere ayrılabilir. Veya farklı bir yapı tercih edilebilir. Java projelerinde, en üst düzey ***package*** genellikle Bounded Context’in ana modül adını belirler:
+    
+`com.mycompany.optimalpurchasing`
+    
+İkinci seviye package yapısı, mimari sorumluluklara göre bölünebilir:
+        
+```
+com.mycompany.optimalpurchasing.presentation
+com.mycompany.optimalpurchasing.application
+com.mycompany.optimalpurchasing.domain.model
+com.mycompany.optimalpurchasing.infrastructure
+```
+
+📌 ***Modüler bir yapı benimsenebilir, ancak Bounded Context içinde yalnızca bir ekip çalışmalıdır.***
+
+> ***Her Bounded Context İçin Tek Bir Ekip***
+>
+> Bir Bounded Context üzerinde tek bir ekibin çalışması, esneklik kısıtlaması değildir. Ekiplerin farklı projelerde çalışması mümkündür. Ancak tek bir Bounded Context için tek bir odaklanmış ekip olmalıdır. Eğer birden fazla ekip aynı Bounded Context üzerinde çalışırsa Ubiquitous Language (Ortak Dil) parçalanır ve tutarsız hale gelir.
+> 
+> İki ekibin birlikte çalışması gerektiğinde, ***Shared Kernel*** modeli kullanılabilir. Ancak bu, standart bir Bounded Context değildir. ***Shared Kernel modeli, ekipler arasında sıkı bir iş birliği gerektirir. Model değişiklikleri için sürekli iletişim zorunludur, bu yüzden genellikle kaçınılması gereken bir yaklaşımdır.***
+
+Java projelerinde _Bounded Context_, bir veya daha fazla ***JAR, WAR veya EAR*** dosyasında barındırılabilir. Modülerleştirme için JAR dosyaları ayrı bileşenler halinde dağıtılabilir. OSGi veya Java 8 Jigsaw modülleri ile bağımsız sürüm yönetimi sağlanabilir.
+
+Windows/.NET projelerinde _Bounded Context_ dağıtımı ***DLL dosyaları*** kullanılarak yapılır. .NET'in CLR modülerleştirme sistemi, assembly’ler üzerinden yönetilir. Assembly manifest dosyasında, bağımlılıkları ve sürüm bilgileri kayıt altına alınır.
+
+***Sonuç:*** Bounded Context’in nasıl paketleneceği teknik tercihlere bağlıdır. Ancak asıl önemli olan, teknik bileşenlerin modeli değil, modelin teknik bileşenleri belirlemesidir. 🚀
+
+## Örnek Bağlamlar
+
+Örnekler, sıfırdan geliştirilen bir ortamı temsil ettiğinden, seçilen üç Bounded Context sonunda en arzu edilen şekilde kendi Alt Alanları (Subdomains) ile birebir hizalanmıştır. Ancak, ekip başlangıçta bunu başaramamış ve bu da önemli bir ders öğretmiştir. Nihai sonuç Şekil 2.7'de gösterilmektedir.
+
+![Figure 2.7](./images/figure-2-7.png)
+**Figure 2.7:** Tamamen hizalanmış Subdomains'lerdeki örnek Bounded Context'lerin değerlendirme görünümü
+
+Aşağıdaki materyal, bu üç modelin gerçekçi, modern bir kurumsal çözümü nasıl oluşturduğunu göstermektedir. Gerçek dünyadaki her projede her zaman birden fazla Bounded Context bulunur. Bunlar arasındaki entegrasyon, günümüz kurumsal sistemleri için önemli bir senaryodur. Bounded Context ve Alt Alanları (Subdomains) anlamanın yanı sıra, Context Mappin ve Entegrasyonu (13. Bölüm) da kavramamız gerekir.
+
+Şimdi, örnek DDD uygulamaları olarak sunulan üç Bounded Context'e bakalım: **Collaboration Context, Identity and Access Context ve Agile Project Management Context.**
+
+### Collaboration Context
+
+İş dünyasında işbirliği araçları, hızlı tempolu ekonomide sinerjik bir çalışma ortamı yaratmak ve kolaylaştırmak için en önemli alanlardan biridir. Üretkenliği artırmaya, bilgi transferini sağlamaya, fikir paylaşımını teşvik etmeye ve yaratıcı süreci düzenli bir şekilde yönetmeye yardımcı olabilecek her şey, kurumsal başarı denklemine büyük bir katkıdır. Yazılım araçları, geniş topluluklara hitap eden özellikler sunabileceği gibi, günlük aktiviteler ve projeler için dar bir kitleye yönelik de olabilir. Şirketler en iyi çevrimiçi araçlara yönelirken, SaaSOvation da bu pazardan pay almak istiyor.
+
+Collaboration Context) tasarlamak ve uygulamakla görevlendirilen çekirdek ekip, ilk sürüm için aşağıdaki asgari araçları destekleme görevini aldı:
+
+- Forumlar
+- Paylaşılan takvimler
+- Bloglar
+- Anlık mesajlaşma
+- Wiki
+- Mesaj panoları
+- Doküman yönetimi
+- Duyurular ve uyarılar
+- Aktivite takibi
+- RSS beslemeleri
+
+Geniş bir özellik yelpazesini desteklerken, bu işbirliği araçlarının her biri, belirli ve dar ekip ortamlarını da destekleyebilir. Ancak, tüm bu araçlar işbirliğinin bir parçası oldukları için aynı Bounded Context içinde yer almaktadır. Ne yazık ki, bu kitap tüm işbirliği araçlarını kapsayan tam bir çözüm sunamamaktadır. Ancak Şekil 2.8'de temsil edilen Forumlar ve Paylaşılan Takvimler araçlarının alan modeli üzerine bazı bölümleri inceleyeceğiz.
+
+Şimdi, ekibin deneyimine geçelim...
+
+![Figure 2.8](./images/figure-2-8.png)
+**Figure 2.8:** Ubiquitous Dili, sınırın içine neyin ait olduğunu belirler. Okunabilirlik için bazı model öğeleri gösterilmemiştir. Aynı durum UI ve Application Service'ler için de geçerlidir.
+
+---
+
+Ürün geliştirme sürecinin başından itibaren ***Tactical DDD*** kullanıldı, ancak ekip hâlâ DDD’nin daha ince noktalarını öğrenme sürecindeydi. Aslında, gerçekte kullandıkları yöntem ***DDD-Lite*** olarak tanımlanabilecek bir yaklaşımdı; yani taktiksel desenleri ağırlıklı olarak teknik bir kazanç sağlamak için uyguluyorlardı. İşbirliği bağlamının Ortak Dilini (Ubiquitous Language) yakalamaya çalışıyorlardı, ancak modelin belirli sınırları olduğunu ve bu sınırların fazla zorlanamayacağını tam olarak anlamamışlardı.
+
+Sonuç olarak, güvenlik ve yetkilendirme mekanizmasını işbirliği modeline gömerek bir hata yaptılar. Projenin ilerleyen aşamalarında, güvenlik ve yetkilendirme mekanizmasını modelin bir parçası olarak tasarlamanın ilk başta düşündükleri kadar iyi bir fikir olmadığını fark ettiler. Başlangıçta, bir uygulama silosu oluşturma tehlikesine karşı yeterince dikkatli ya da bilinçli değillerdi. Ancak merkezi bir güvenlik sağlayıcısı kullanmadıkları sürece, tam da böyle bir durumla karşı karşıya kalacaklardı. Bu, iki farklı modeli tek bir model içinde birleştirmek anlamına geliyordu.
+
+Kısa sürede, güvenlik konularını Çekirdek Alan (Core Domain) içine entegre etmenin karmaşık bir düğüme yol açtığını öğrendiler. İş mantığının tam ortasında, davranışsal metotlar içinde geliştiriciler istemcinin yetkisini kontrol ediyordu:
+
+---
+
+```
+public class Forum extends Entity {
+	... 
+	public Discussion startDiscussion(String aUsername, String aSubject) { 
+		if (this.isClosed()) {
+			throw new IllegalStateException("Forum is closed."); 
+		}
+
+		User user = userRepository.userFor(this.tenantId(), aUsername); 
+
+		if (!user.hasPermissionTo(Permission.Forum.StartDiscussion)) {
+            throw new IllegalStateException("User may not start forum discussion."); 
+		}
+
+		String authorUser = user.username();
+		String authorName = user.person().name().asFormattedName();
+		String authorEmailAddress = user.person().emailAddress(); 
+
+		Discussion discussion = new Discussion(
+			this.tenant(),
+			this.forumId(), 
+			DomainRegistry.discussionRepository().nextIdentity(),
+			authorUser,
+			authorName,
+			authorEmailAddress,
+			aSubject); 
+
+		return discussion;
+	}
+	...
+}
+```
+<br>
+
+> ***Bir Tren Kazası mı Gördüm?***
+>
+> Bazı geliştiriciler, `user.person().name().asFormattedName()` gibi birden fazla ifadeyi zincirleme kullanmayı _tren kazası" (train wreck)_ olarak görür. Diğerleri ise bunu kodda ifadeliğin (expressiveness) bir göstergesi olarak kabul eder. Ben burada bu iki görüşten birini savunmuyorum. Asıl odak noktam, ***karışık bir modelin ortaya çıkması***. _Tren kazası_ ise tamamen farklı bir konu.
+
+----------
+
+Bu, gerçekten kötü bir tasarımdı. Geliştiricilerin burada doğrudan User nesnesine referans vermemesi gerekiyordu; **hatta bir Repository'den (12) User sorgulamak bile yanlış bir yaklaşımdı**. Dahası, **Permission (Yetki)** bile erişim sınırlarının dışında olmalıydı. Ancak bu nesneler yanlış bir şekilde **işbirliği modelinin** bir parçası olarak tasarlandığı için bunlar mümkün hale gelmişti. Bundan daha da kötüsü, bu hatalı tasarım yüzünden modellenmesi gereken önemli bir kavramı gözden kaçırdılar: "Author" (Yazar). Üç ilgili niteliği ***Value Object*** içinde toplamak yerine, geliştiriciler bu veri öğelerini ayrı ayrı ele almakla yetindiler. Yani, **işbirliğine odaklanmak yerine güvenliği düşünerek tasarım yaptılar**.
+
+Bu yalnızca tek bir örnek değildi. Tüm işbirliği nesneleri benzer sorunlar içeriyordu. Kod hızla Big Ball of Mud (Çamur Yığını) haline gelme riskiyle karşı karşıya kalınca ekip, kodun değiştirilmesi gerektiğine karar verdi. Ayrıca, ekip yetkilendirme (permission) yaklaşımını bırakıp rol tabanlı erişim yönetimine geçmek istiyordu. Peki bunu nasıl yapacaklardı?
+
+Ekip, çevik geliştirme metodolojilerini benimseyen ve çevik proje yönetim araçları geliştiren bir gruptu. Bu yüzden tam zamanında (just-in-time) refaktörizasyon yapmaktan çekinmiyorlardı. Ancak asıl soru şuydu:
+
+> Yanlış giden bu karmaşık kod yapısından kurtulmak için en iyi DDD desenleri hangileriydi?
+
+Ekipten birkaç kişi, ekstra mesai yaparak **[Evans]’ın Tactical Building Block) Patterns** inceledi. Ancak bu desenlerin de çözüm getirmediğini fark ettiler. Çünkü bu desenler doğrultusunda _Entities_ ve _Value Objects_ ile _Aggregates_ oluşturmuş ve bunu yaparken, _Repositories_ ve _Domain Services_ de kullanmışlardı. Ancak eksik olan bir şey vardı. Bu da muhtemelen [Evans]’ın ikinci bölümüne daha yakından bakmaları gerektiğini gösteriyordu.
+
+Nihayet **"Bölüm III: Daha Derin İçgörüye Doğru Refaktörizasyon" ([Evans])** bölümüne odaklandıklarında, DDD’nin düşündüklerinden çok daha fazlasını sunduğunu fark ettiler. Bu teknikleri inceledikçe, modeli Ortak Dil’e (Ubiquitous Language) daha iyi uyarlayarak geliştirebileceklerini anladılar. Alan uzmanlarıyla daha fazla zaman geçirerek, onların zihnindeki modeli daha iyi yansıtan bir tasarım ortaya koyabilirlerdi. Ancak bu bile güvenlik sorunlarıyla bulanıklaşan işbirliği modelini tamamen düzeltemezdi.
+
+Daha sonra, kitapta **"Bölüm IV: Stratejik Tasarım" ([Evans])** bölümüne geldiklerinde, içlerinden biri kilit bir yönlendirme keşfetti. Bu yönlendirme, ekibin Çekirdek Alan’ı (Core Domain) daha iyi kavramasını sağlayacaktı. Ekip, ilk olarak Bağlam Haritalarını (Context Maps) kullanmaya başladı. Bu, mevcut proje durumlarını daha iyi anlamalarına yardımcı oldu. Basit bir egzersiz olmasına rağmen, ilk Bağlam Haritası’nı çizmek ve mevcut çıkmazlarını tartışmaya açmak ileriye doğru büyük bir adım oldu. Bu süreç, üretken analizlere ve nihayetinde ekibin önündeki engelleri aşmasına olanak sağladı.
+
+Ekip, giderek daha kırılgan hale gelen modellerini istikrara kavuşturmak için birkaç geçici iyileştirme seçeneğine sahipti:
+
+1.  ***Sorumluluk Katmanlarına (Responsibility Layers) Geçiş Yapmak*** [Evans]: Bu yaklaşım, güvenlik ve izinler özelliklerini mevcut modelin alt mantıksal bir katmanına yerleştirerek modeli yeniden düzenlemeyi öneriyordu. Ancak, bu yöntem en iyi yaklaşım gibi görünmüyordu. Sorumluluk Katmanları, büyük ölçekli modelleri ele almak veya zamanla büyük ölçeklere ulaşacak modelleri planlamak için kullanılmalıdır. Her katman, çekirdek alanda yer almalı ve dikkatlice bölünmelidir. Ancak ekibin karşılaştığı sorun, çekirdek alana ait olmayan, yanlış yerleştirilmiş kavramlardı.
+    
+2.  ***Alternatif Olarak Ayrılmış Çekirdek (Segregated Core) Modeline Yönelmek*** [Evans]: Bu yöntem, işbirliği bağlamındaki tüm güvenlik ve izin endişelerini kapsamlı bir şekilde araştırmayı ve ardından kimlik ve erişim bileşenlerini tamamen ayrı paketlere ayırmayı içeriyordu. Bu, tamamen ayrı bir Bounded Context oluşturmanın nihai sonucunu vermezdi, ancak ekibi bu hedefe daha da yaklaştırırdı. Bu yaklaşım, aslında _Segregated Core oluşturma zamanı, sistem için kritik olan büyük bir Bağlam’ınız olduğunda, ancak modelin temel kısmının çok fazla destekleyici işlev tarafından gizlendiği zaman gelir_ şeklinde belirtilen örüntüyle uyumluydu. Destekleyici işlevler kesinlikle güvenlik ve izinlerdi. Ekip, bu çabalarla ayrı bir **Kimlik ve Erişim Bağlamı** nın ortaya çıkacağı ve bu Bağlam’ın **Generic Subdomain** olarak işbirliği bağlamına hizmet edeceğini fark etti.
+
+Segregated Core oluşturma girişimi kolay olmayacaktı. Bu, planlanmamış birkaç hafta süren bir çalışma gerektirebilirdi. Ancak, düzeltici bir eylemde bulunmazlarsa, hatalarla birlikte, değişime duyarlı olmayan kırılgan bir kod tabanı ile karşılaşacaklardı. İş liderliği, yeni bir iş hizmetine başarılı bir şekilde ayrılmanın, ileride yeni bir **SaaS** ürünü oluşturma yoluna gidebileceğini belirleyerek bu yönün doğruluğunu onayladı.
+
+Önemli olarak, ekip **Bağlı Bağlamların (Bounded Contexts)** değerini ve bir **cohesive Core Domain** (bütünsel bir çekirdek alan) korumak için güçlü bir şekilde mücadele etmenin önemini artık anlıyordu. Stratejik tasarım desenlerini kullanarak, yeniden kullanılabilir modelleri ayrı Bağlamlarda izole edebilir ve gerektiğinde entegrasyon sağlayabilirlerdi.
+
+Gelecekteki **Kimlik ve Erişim Bağlamı**, yerleşik güvenlik ve izinler tasarımından farklı görünecekti. **Yeniden kullanım** için tasarım yapmak, ekibin **çok daha genel amaçlı bir model** oluşturmasına zorlayacaktı, böylece bu model farklı uygulamalar tarafından gerektiğinde kullanılabilirdi. Bu özel ekip — işbirliği bağlamı ekibinden birkaç üye alarak oluşturulacak olan ekip — ayrıca çeşitli uygulama stratejileri de sunabilecekti. Stratejiler, üçüncü taraf ürünlerin ve müşteri özel entegrasyonlarının kullanılmasını içerebilir, çünkü bunlar yerleşik güvenlik karmaşası nedeniyle oldukça ulaşılamaz hale gelmişti.
+
+Segregated Core geliştirmenin geçici bir adım haline gelmesi nedeniyle, bu sonuçlar burada detaylı olarak ele alınmamaktadır. Ancak kısaca, tüm güvenlik ve izin sınıflarının ayrılmış Modüllere taşındığı ve Uygulama Servisi müşterilerinin güvenlik ve izinleri bu nesneler aracılığıyla kontrol ettikten sonra çekirdek alana çağrı yapmalarının gerektiği belirtilmiştir. Bu, çekirdeği yalnızca işbirliği modeli nesne kompozisyonları ve davranışlarıyla sınırlamayı sağladı. Uygulama Servisi, güvenlik ve nesne çevirisini ele alıyordu.
+
+```
+public class ForumApplicationService ... {
+	...
+	@Transactional
+	public Discussion startDiscussion( 
+		String aTenantId,
+		String aUsername,
+		String aForumId,
+		String aSubject) {
+		Tenant tenant = new Tenant(aTenantId);
+		ForumId forumId = new ForumId(aForumId);
+		Forum forum = this.forum(tenant, forumId);
+
+		if (forum == null) {
+			throw new IllegalStateException("Forum does not exist."); 
+		}
+
+		Author author = this.collaboratorService.authorFrom(tenant, anAuthorId); 
+		Discussion newDiscussion = forum.startDiscussion(
+			this.forumNavigationService(), 
+			author, 
+			aSubject); 
+
+		this.discussionRepository.add(newDiscussion); 
+		return newDiscussion;
+	} 
+	...
+}
+```
+
+`Forum`'un sonucu şu şekilde oldu:
+
+```
+public class Forum extends Entity {
+
+...
+
+ public Discussion startDiscussionFor(
+		ForumNavigationService aForumNavigationService,
+		Author anAuthor,
+		String aSubject) {
+		if (this.isClosed()) { 
+			throw new IllegalStateException("Forum is closed.");
+		}
+		Discussion discussion = new Discussion(
+			this.tenant(), 
+			this.forumId(),
+			aForumNavigationService.nextDiscussionId(),
+			anAuthor,
+			aSubject); 
+
+		DomainEventPublisher
+			.instance()
+			.publish(new DiscussionStarted(
+				discussion.tenant(),
+				discussion.forumId(),
+				discussion.discussionId(),
+				discussion.subject())); 
+
+		return discussion;
+	} 
+	...
+}
+```
+
+Bu, ***User*** ve ***Permission*** karmaşasını ortadan kaldırarak modeli yalnızca işbirliği üzerinde odaklamalarını sağladı. Yine de bu, mükemmel bir sonuç değildi, ancak ekip, **Bağlı Bağlamları (Bounded Contexts)** ayırma ve entegre etme konusunda gelecekteki yeniden yapılandırmalar için hazır hale geldi. İşbirliği Bağlamı ekibi, tüm güvenlik ve izin Modülleri ve türlerini Bağlı Bağlamlarından çıkaracak ve memnuniyetle yeni Kimlik ve Erişim Bağlamını kullanacaklardı. Güvenliği merkezi ve yeniden kullanılabilir hale getirme hedefi artık ulaşılabilir durumdaydı.
+
+Ekip, başlangıçta diğer yönde ilerlemeyi de seçebilirdi. **Bağlı Bağlamları** minyatürleştirerek, her işbirliği aracını (örneğin, Forum ve Takvim gibi) ayrı modeller olarak oluşturabilirlerdi, bu da toplamda on ya da daha fazla Bağlam’a yol açabilirdi. Ekipleri bu yöne itebilecek ne olabilirdi? Çoğu işbirliği aracı diğerlerine bağlı olmadığından, her birini bağımsız bir bileşen olarak dağıtmak mümkündü. Her bir aracı ayrı bir Bağlı Bağlamda yerleştirerek, ekip yaklaşık on doğal dağıtım birimi oluşturabilirdi. Doğru, ancak on farklı domain modelinin oluşturulması, bu dağıtım hedeflerine ulaşmak için gereksizdi ve muhtemelen Ubiquitous Language'ın modelleme ilkelerine karşı çalışırdı.
+
+Bunun yerine, ekip modeli bir olarak tutmaya karar verdi, ancak her işbirliği aracı için ayrı bir JAR dosyası oluşturdu. **Jigsaw** modularizasyonu kullanarak, her bir araç için sürüm tabanlı dağıtım birimleri oluşturdu. Doğal işbirliği bölümleri için JAR dosyalarının yanı sıra, ***Tenant***, ***Moderator***, ***Author***, ***Participant*** gibi ortak model nesneleri için de bir dosyaya ihtiyaçları vardı. Bu yaklaşım, Ubiquitous Language'ı geliştirmeyi desteklerken, mimari ve uygulama yönetimi açısından dağıtım hedeflerini de karşıladı.
+
+---
+
+Bu anlayışla, **Kimlik ve Erişim Bağlamı**'nın nasıl oluştuğunu inceleyebiliriz.
+
+** 80. sayfada kaldım
