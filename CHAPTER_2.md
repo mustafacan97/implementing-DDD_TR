@@ -616,7 +616,7 @@ public class Forum extends Entity {
 		User user = userRepository.userFor(this.tenantId(), aUsername); 
 
 		if (!user.hasPermissionTo(Permission.Forum.StartDiscussion)) {
-            throw new IllegalStateException("User may not start forum discussion."); 
+			throw new IllegalStateException("User may not start forum discussion."); 
 		}
 
 		String authorUser = user.username();
@@ -707,10 +707,8 @@ public class ForumApplicationService ... {
 
 ```
 public class Forum extends Entity {
-
-...
-
- public Discussion startDiscussionFor(
+	...
+	public Discussion startDiscussionFor(
 		ForumNavigationService aForumNavigationService,
 		Author anAuthor,
 		String aSubject) {
@@ -748,4 +746,68 @@ Bunun yerine, ekip modeli bir olarak tutmaya karar verdi, ancak her işbirliği 
 
 Bu anlayışla, **Kimlik ve Erişim Bağlamı**'nın nasıl oluştuğunu inceleyebiliriz.
 
-** 80. sayfada kaldım
+### Kimlik ve Erişim Bağlamı
+
+Bugün çoğu kurumsal uygulama, sisteme erişmeye çalışan kişilerin kimliklerini doğrulamak ve gerçekleştirmeye çalıştıkları işlemleri yapmaya yetkili olduklarından emin olmak için bazı güvenlik ve izin bileşenlerine sahip olmalıdır. Az önce analiz ettiğimiz gibi, uygulama güvenliğine yönelik basit bir yaklaşım, kullanıcıları ve izinleri her bir ayrı sistemle birlikte oluşturur, bu da her uygulamada bir silo etkisi yaratır.
+
+Bir sistemin kullanıcıları, her ne kadar onları kullanan birçok kişi aynı olsa da, diğer sistemlerin kullanıcılarıyla kolayca ilişkilendirilemez. Silo etkilerinin iş dünyasında her yerde ortaya çıkmasını önlemek için mimarların güvenlik ve izinleri merkezi bir hale getirmeleri gerekir. Bu, bir kimlik ve erişim yönetim sistemi satın alarak veya geliştirerek yapılır. Seçilen yol, gereken karmaşıklık düzeyine, mevcut zaman ve toplam sahiplik maliyetine bağlı olacaktır.
+
+> CollabOvation'daki kimlik ve erişim karışıklığını düzeltmek, çok aşamalı bir süreç olacaktı. İlk olarak, ekip Segregated Core [Evans] kullanarak yeniden yapılandırma yaptı; "Collaboration Context" bölümüne bakın. Bu adım, o dönemde CollabOvation'un güvenlik ve izin endişelerinden arındırılmasını sağlamak amacıyla belirlenen hedefi yerine getirdi. Ancak, kimlik ve erişim yönetiminin nihayetinde kendi bağlam sınırını oluşturması gerektiğini düşündüler. Bu, daha büyük bir çaba gerektirecekti.
+
+Bu, yeni bir Bounded Context'i oluşturur—Identity and Access Context—ve bu, diğer Bounded Context'ler tarafından standart DDD entegrasyon teknikleriyle kullanılacaktır. Bu contenxt'i kullanan context'ler için **Identity and Access Context**, bir <ins>***Generic Subdomain***</ins>'dir. Ürün ***IdOvation*** olarak adlandırılacaktır.
+
+Şekil 2.9'da gösterildiği gibi, Identity and Access Context _çoklu kiracıyı (multitenant)_ destekler. Bir SaaS ürünü geliştirirken bu, açıkça gereklidir. Her kiracı ve her kiracının sahip olduğu nesne varlıklarının tamamen benzersiz bir kimliği olacak, böylece her kiracı diğerlerinden mantıksal olarak izole edilir. Sistem kullanıcıları, yalnızca davet yoluyla kendinize ait bir hizmet üzerinden kayıt edilir. Güvenli erişim, bir kimlik doğrulama servisi aracılığıyla sağlanır ve şifreler her zaman yüksek seviyede şifrelenir. Kullanıcı grupları ve iç içe geçmiş gruplar, tüm organizasyon ve en küçük ekipler dahil olmak üzere sofistike kimlik yönetimi sağlar. Sistem kaynaklarına erişim, basit, zarif ancak güçlü bir rol tabanlı izin sistemi ile yönetilir.
+
+![Figure 2.9](./images/figure-2-9.png)
+**Figure 2.9:** Sınırın içindeki her şey Ubiquitous Language'e göre bağlam içindedir. Bu Bounded Context'de, bazıları modelde ve bazıları diğer katmanlarda olmak üzere başka bileşenler de vardır, ancak okunabilirlik açısından burada gösterilmemiştir. Aynı şey UI ve Application Services için de geçerlidir.
+
+Daha ileri bir adım olarak, modeldeki davranışlar, böyle bir durumu takip edenler için **önemli durum dönüşümleri** oluşturduğunda, ***Domain Events (8)*** yayınlanır. Bu Etkinlikler genellikle, **geçmiş zamanla birleşen fiillerle** yapılan isimlerden oluşur, örneğin _TenantProvisioned_, _UserPasswordChanged_, _PersonNameChanged_ ve diğerleri.
+
+Bir sonraki bölüm (_Context Maps_ bölümü) Identity and Access Context'in diğer iki örnek Context tarafından nasıl kullanıldığını ve DDD entegrasyon desenlerini gösterir.
+
+### Agile Project Management Context
+
+Agile geliştirme yöntemlerinin hafif yapısı, özellikle 2001'de Agile Manifesto'nun yaratılmasının ardından popülerliğini artırdı. SaaSOvation, vizyon beyanında, ikinci ana ve stratejik girişim olarak bir **agile proje yönetim uygulaması** geliştirmeyi hedefliyor. İşte gelişmeler...
+
+----------
+
+Üç çeyrek boyunca başarılı CollabOvation abonelik satışları, müşteri geri bildirimlerine göre planlanan yükseltmeler ve beklenenden daha iyi gelirlerle, şirketin ProjectOvation planları başlatıldı. Bu, onların yeni **Core Domain**'idir ve CollabOvation’dan en iyi geliştiriciler, SaaS çok kiracılık özellikleri ve yeni DDD deneyimlerini kullanmak için dahil edilecektir.
+
+Bu proje, **agile projelerin yönetimine** odaklanır ve **Scrum**'ı iteratif ve artımlı proje yönetim çerçevesi olarak kullanır. ProjectOvation, ürün, ürün sahibi, takım, iş listesindeki maddeler, planlı sürümler ve sprint'lerle birlikte geleneksel Scrum proje yönetim modelini takip eder. İş listesi maddesi tahminleri, maliyet-fayda analizi kullanan iş değeri hesaplayıcılarıyla sağlanır.
+
+İş planı, iki başlı bir vizyonla başladı. **CollabOvation** ve **ProjectOvation** tamamen ayrı yollara gitmeyeceklerdi. SaaSOvation ve yönetim kurulu, **işbirliği araçları** ile **agile yazılım geliştirmeyi** birleştirerek yenilik yapmayı öngördüler. Böylece, CollabOvation özellikleri, ProjectOvation'a isteğe bağlı bir ek olarak sunulacaktır. CollabOvation, ProjectOvation için bir **Supporting Subdomain**'dir. Ürün sahipleri ve takım üyeleri, ürün tartışmaları, sürüm ve sprint planlaması, iş listesi maddesi tartışmaları yapacak ve takvimleri paylaşacaklardır. Gelecekte, ProjectOvation ile kurumsal kaynak planlaması eklemek planlanmaktadır, ancak ilk agile ürün hedeflerinin önce karşılanması gerekmektedir.
+
+Teknik paydaşlar, başlangıçta ProjectOvation özelliklerini, CollabOvation modelinin bir uzantısı olarak bir versiyon kontrol sistemi dalı kullanarak geliştirmeyi planladılar. Bu aslında büyük bir hata olurdu, ancak sorun alanlarında Subdomains ve çözüm alanlarında Bounded Context'ler üzerinde doğru dikkat gösterilmemesinin tipik bir örneğiydi.
+
+Neyse ki, teknik ekip **CollabOvation** modelindeki karmaşık sorunlardan ders aldı. O deneyimden çıkarılan ders, **agile proje yönetimi modeli** ile işbirliği modelini birleştirmenin büyük bir hata olacağına dair ekipte bir farkındalık yaratmıştı. Artık ekip, DDD stratejik tasarımına güçlü bir şekilde eğilerek düşünmeye başlamıştı.
+
+Şekil 2.10, stratejik tasarım zihniyetini benimsemenin bir sonucu olarak, ProjectOvation ekibinin **tüketicilerini** **Ürün Sahipleri** ve **Takım Üyeleri** olarak doğru bir şekilde düşündüğünü göstermektedir. Sonuçta, bu rol, Scrum uygulayıcıları tarafından oynanan proje üyeliği rolleridir. Kullanıcılar ve roller, ayrı **Identity and Access Context** içinde yönetilmektedir. Bu Bounded Context kullanılarak, **self-service**, abonelerin kişisel kimliklerini yönetmelerini sağlar. Yönetim kontrolleri, **üretim sahiplerinin** ürün takım üyelerini belirlemelerini sağlar. Roller doğru şekilde yönetildiğinde, Ürün Sahipleri ve Takım Üyeleri Agile Project Management Context içinde oluşturulabilir. Projenin geri kalanı, ekip agile proje yönetimi için Ubiquitous Language'i dikkatle oluşturulmuş bir alan modeli ile yakalamaya odaklanırken fayda sağlayacaktır.
+
+![Figure 2.10](./images/figure-2-10.png)
+**Figure 2.10:** Bu Sınırlı Bağlamın Ubiquitous Language'i, Scrum tabanlı çevik ürünler, iterasyonlar ve sürümlerle ilgilidir. Okunabilirlik için, UI ve Appilcation Services de dahil olmak üzere bazı bileşenler burada gösterilmemiştir.
+
+
+Bir gereksinim, ProjectOvation'ın otonom bir uygulama servisleri seti olarak çalışması gerektiğini belirtmektedir. Ekip, ProjectOvation’ın diğer Bounded Context'lere olan bağımlılığını mantıklı bir periyodiklikte sınırlamak istemektedir veya en azından pratik olduğu kadar. Genel olarak, _ProjectOvation_ kendi başına çalışabilme kapasitesine sahip olacaktır ve eğer _IdOvation_ veya _CollabOvation_ herhangi bir nedenle çevrimdışı olursa, ProjectOvation otonom olarak çalışmaya devam edecektir. Tabii ki, bu durumda bazı şeyler bir süreliğine senkronize olmayabilir ve muhtemelen çok kısa bir süre için, ancak sistem çalışmaya devam edecektir.
+
+----------
+
+> **Bağlam Her Terime Çok Belirli Bir Anlam Verir**
+>
+> Bir Scrum tabanlı Ürün, inşa edilen yazılımı tanımlayan herhangi bir sayıda _BacklogItem_ örneğine sahiptir. Bu, bir e-ticaret sitesinde alışveriş sepetine eklediğiniz satın alacağınız ürünlerden çok farklıdır. Bunu nasıl biliyoruz? Çünkü Bağlam var. _Ürün_'ün ne anlama geldiğini Agile PM Bağlamı içinde anlıyoruz. Bir Online Store Context'nda, _Ürün_ çok farklı bir anlam taşır. Ekip, ürünü _ScrumProduct_ olarak adlandırmak zorunda kalmadı çünkü farkı iletmek için bu yeterliydi.
+
+----------
+
+**Product**, **Backlog Items**, **Tasks**, **Sprints** ve **Releases**'dan oluşan Core Domain , SaaSOvation deneyimiyle çok daha iyi bir başlangıç yapmıştır. Yine de, **Aggregate** (10) modellerini dikkatlice oluşturmanın dik öğrenme eğrisindeki büyük derslere bir göz atmak istiyoruz.
+
+## Sonuç
+
+Bu, DDD stratejik tasarımının önemini derinlemesine tartıştık!
+
+- ***Domains***, ***Subdomains*** ve ***Bounded Contexts*** üzerinde durdunuz. 
+- Hem **problem space** hem de **solution space** değerlendirmeleri yaparak, mevcut işletme manzarasını stratejik olarak nasıl değerlendirebileceğinizi keşfettiniz.
+- Bounded Context'leri, dilsel olarak modelleri açıkça ayırmak için nasıl kullanılacağına dair kapsamlı bir şekilde incelediniz.
+- Bounded Context'lerde neler olduğunu, nasıl doğru boyutlandırılacaklarını ve nasıl dağıtıma uygun hale getirilebileceğini öğrendiniz.
+- SaaSOvation ekibinin Collaboration Context'in tasarımındaki ilk başlarda yaşadığı acıyı hissettiniz ve ekibin bu kötü durumdan nasıl çıktığını gördünüz.
+- Şu anki Core Domain olan Agile Project Management Context'in nasıl şekillendiğini, tasarım ve uygulama örneklerinin odak noktası olduğunu gözlemlediniz.
+
+Söz verildiği gibi, bir sonraki bölüm _Context Mapping_ üzerine derinlemesine bir inceleme yapacak. Bu, tasarımlarda kullanılacak temel bir stratejik modelleme aracıdır. Bu bölümde aslında biraz Context Mapping yaptığımızı fark etmiş olabilirsiniz. Bu kaçınılmazdı, çünkü farklı domain'leri değerlendiriyorduk. Yine de, bir sonraki bölümde çok daha ayrıntılı bir şekilde inceleyeceğiz.
