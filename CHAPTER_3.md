@@ -215,5 +215,46 @@ Bir adım geri gidelim. Collaboration Context ilk Core Domain olduğundan, ona b
 
 ***Collaboration Context***
 
+Şimdi, **Collaboration** ekibinin deneyimine geri dönelim...
 
-*** 101. sayfada kaldım
+----------
+
+Collaboration Context, ilk model ve sistem —ilk Core Domain— olduğundan, artık işleyişi iyi anlaşılmış durumdadır. Burada kullanılan entegrasyonlar daha basit olmakla birlikte, güvenilirlik ve otonomi açısından daha az sağlamdır. Yakınlaştırılmış bir Context Map oluşturmak nispeten kolaydır.
+
+----------
+
+**Identity and Access Context** tarafından yayımlanan **REST tabanlı hizmetlerin** bir istemcisi olarak, **Collaboration Context**, kaynaklara erişirken geleneksel bir **RPC benzeri** yaklaşım benimser. Bu Context, Identity and Access Context'ten aldığı verileri yerel olarak yeniden kullanmak için kalıcı olarak saklamaz. Bunun yerine, her ihtiyacı olduğunda uzak sisteme bağlanarak bilgiyi tekrar tekrar talep eder. Bu durum, Collaboration Context'in ***uzak hizmetlere yüksek bağımlılığı olduğunu ve otonom olmadığını*** açıkça gösterir. SaaSOvation, şimdilik bu durumu kabul etmeye razıdır.
+
+Beklenmedik şekilde, Generic Subdomain ile bir entegrasyon ortaya çıkmıştır. Ekip, zorlu teslimat takvimine uyabilmek için daha karmaşık ve otonom bir tasarım geliştirmeye zaman ayıramadı. Tasarımın başlangıçtaki kolaylığı, göz ardı edilemeyecek bir avantaj sundu. ProjectOvation'ın devreye alınması ve burada edinilen otonomi deneyimi sonrasında, benzer teknikler CollabOvation için de uygulanabilir.
+
+Yakınlaştırılmış diyagramda gösterilen **sınır nesneleri (boundary objects)**, kaynağı senkron bir şekilde talep ede*. Uzak modelin temsili alındığında, sınır nesneleri, ilgilenilen içeriği bu temsilden alır ve çevirerek uygun bir **Value Object** örneği oluşturur. Figure 3.7'de gösterildiği gibi, bir Moderator rolündeki Kullanıcı (Identity and Access Context) alınarak, Collaboration Context içinde bir Moderator Value Object**'e dönüştürülür.
+
+![Figure 3.6](./images/figure-3-6.png)
+
+**Figure 3.6:** Collaboration Context ve Identity and Access Context arasındaki entegrasyonun Anticorruption Layer ve Open Host Service'İne daha yakından bakmak
+
+![Figure 3.7](./images/figure-3-7.png)
+
+**Figure 3.7:** Temsili bir durumun (bu durumda XML) yerel modeldeki bir Value Object'ine nasıl eşlendiğini gösteren mantıksal bir Çeviri Haritası.
+
+---
+
+> ***Düşünme Zamanı***
+> Projenizdeki Bounded Context’lerden birinde ilginç entegrasyon noktalarından birine dair bir Çeviri Haritası (Translation Map) oluşturun.
+>
+> * Eğer çeviriler çok karmaşıksa, fazla veri kopyalama ve senkronizasyon gerektiriyorsa ve çevrilen nesneniz, diğer modeldeki nesneye fazla benziyorsa, belki de yabancı Bounded Context’ten çok fazla unsur alıyorsunuzdur. Bu durum, modelinizde kafa karıştırıcı çakışmalara neden olabilir.
+
+----------
+
+_Ne yazık ki, senkron isteğin başarısız olması durumunda, çünkü uzak sistem kullanılamıyorsa, tüm yerel işlem başarısız olmalıdır. Kullanıcıya sorun hakkında bilgi verilir ve daha sonra tekrar denemesi istenir._
+
+Sistem entegrasyonları genellikle RPC’ye dayanır. Yüksek seviyede bakıldığında RPC, normal bir programlama prosedürü çağrısına oldukça benzer görünür. Kütüphaneler ve araçlar, kullanımı çekici ve kolay hale getirir. Ancak, kendi işlem alanınızdaki bir prosedürü çağırmakla, uzak bir sistemdeki prosedürü çağırmak aynı şey değildir. Uzak çağrılar, **_performansı düşürebilecek gecikmelere_** veya **_doğrudan hatalara_** neden olabilir. Ağ trafiği ve uzak sistemin yükü, RPC işlemini geciktirebilir. **Hedef sistem kullanılamazsa, kullanıcı isteği başarıyla tamamlanamaz.
+
+Her ne kadar REST tabanlı kaynak kullanımı doğrudan bir RPC olmasa da, benzer özelliklere sahiptir. Tam sistem hatası nispeten nadir olsa da, bu durum potansiyel olarak can sıkıcı bir sınırlamadır. Ekip, bu durumu en kısa sürede iyileştirmeyi dört gözle bekliyor.
+
+***Agile Project Management Context***
+
+
+
+
+*** 104. sayfada kaldım
