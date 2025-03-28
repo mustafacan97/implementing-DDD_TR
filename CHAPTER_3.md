@@ -385,7 +385,7 @@ Ekip, modelin bazı bölümlerini şimdiden anlayabiliyor. Örneğin, bir tartı
 
 ![Figure 3.10](./images/figure-3-10.png)
 
-**Figure 3.10:**Agile Project Management Context ve Collaboration Context arasındaki olası entegrasyon bileşenlerinin Anticorruption Katmanı ve Open Host Hizmetinin yakından gösterimi
+**Figure 3.10:** Agile Project Management Context ve Collaboration Context arasındaki olası entegrasyon bileşenlerinin Anticorruption Katmanı ve Open Host Hizmetinin yakından gösterimi
     
 Bu inceleme, Context Maps hakkında bazı yararlı detaylara değindi. Ancak, aşırı detaylandırmadan kaçınılmalıdır. Örneğin, Modülleri (Modules - 9. bölüm) dahil edebilirdik, ancak bunlar kendi özel bölümlerine ayrıldı. Ekip için gerçekten kritik olan yüksek seviyeli unsurları ekleyin. Ancak, gereksiz detaylar eklenmeye başlandığında bunu geri çevirmekte tereddüt etmeyin.
     
