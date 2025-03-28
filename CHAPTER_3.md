@@ -254,7 +254,151 @@ Her ne kadar REST tabanlı kaynak kullanımı doğrudan bir RPC olmasa da, benze
 
 ***Agile Project Management Context***
 
+Çevik Proje Yönetimi Bağlamı yeni Çekirdek Alan (Core Domain) olduğu için ona özellikle dikkat edelim. Bu bağlamı ve diğer modellerle olan bağlantılarını daha yakından inceleyelim.
 
+RPC'nin sunduğundan daha yüksek bir özerklik derecesine ulaşmak için, Çevik Proje Yönetimi Bağlamı ekibinin kullanımını dikkatlice kısıtlaması gerekecek. Bu nedenle, bant dışı (out-of-band) veya asenkron olay işleme stratejik olarak tercih edilmektedir.
 
+Bağımlı durumların zaten yerel sistemimizde bulunması, daha yüksek bir özerklik derecesine ulaşmayı sağlar. Bazıları bunu, bağımlı nesnelerin tamamının bir önbelleği olarak düşünebilir, ancak DDD yaklaşımında bu genellikle böyle değildir. Bunun yerine, yabancı modelden çevrilen yerel alan nesneleri oluşturulur ve yalnızca yerel modelin ihtiyaç duyduğu en az miktarda durum tutulur.
 
-*** 104. sayfada kaldım
+Bu durumu ilk etapta elde etmek için bazı sınırlı ve iyi yerleştirilmiş **RPC çağrıları*** veya ***REST tabanlı kaynak istekleri*** yapılabilir. Ancak, uzak modeldeki değişikliklerle senkronizasyon sağlamak için genellikle en iyi yaklaşım, ***uzak sistemler tarafından yayınlanan mesaj tabanlı bildirimleri kullanmaktır***. Bu bildirimler:
+
+- Bir servis veri yolu (service bus) veya mesaj kuyruğu üzerinden gönderilebilir
+- REST aracılığıyla yayınlanabilir
+    
+
+> ***Minimalist Düşün***
+>
+> Senkronize edilen durum, yalnızca yerel modelin ihtiyaç duyduğu uzak modellerin minimal öznitelikleridir. Bu yaklaşım, yalnızca veri senkronizasyon ihtiyacını azaltmak için değil, aynı zamanda modelleme kavramlarını doğru şekilde oluşturmak için gereklidir.
+
+Örneğin, ***ProductOwner*** ve ***TeamMember*** nesnelerinin aslında ***UserOwner*** ve ***UserMember***'ı yansıtmasını istemeyiz. Eğer ***remote user object***'in çok fazla özelliğini miras alırlarsa, farkında olmadan ***hibritleşmiş (hybridized) nesneler*** oluşturmuş oluruz.
+
+***Kimlik ve Erişim Bağlamı ile Entegrasyon***
+
+Yakınlaştırılmış Harita'ya (Şekil 3.8) baktığımızda, Kaynak URI'lerinin, Kimlik ve Erişim Bağlamında meydana gelen önemli ***Alan Olayları (Domain Events)*** hakkında bildirimler sağladığını görüyoruz. Bu bildirimler, ***NotificationResource*** sağlayıcısı aracılığıyla yayınlanan bir RESTful kaynak olarak sunulmaktadır. Notification resources, yayınlanan Domain Event'lerin gruplarıdır. Yayınlanan her olay, gerçekleşme sırasına göre her zaman tüketilmeye hazırdır. Ancak, her istemci, yinelenen (dublicated) tüketimi önlemekten sorumludur.
+    
+
+Özel bir medya türü (custom media type), iki farklı kaynağın talep edilebileceğini gösterir:
+
+```
+application/vnd.saasovation.idovation+json
+//iam/notifications
+//iam/notifications/{notificationId}
+```
+
+![Figure 3.8](./images/figure-3-8.png)
+
+**Figure 3.8:** Agile Project Management Context ile Identity and Access Context arasındaki entegrasyonun Anticorruption Katmanı ve Open Host Service'ini yakından inceleme
+
+İlk kaynak URI'si, istemcilerin **geçerli notification loglarını (HTTP GET ile) almasını sağlar**. Belirlenmiş özel medya türüne göre:
+
+`application/vnd.saasovation.idovation+json`
+
+Bu URI sabittir ve değişmez, yani her zaman aynı kalır. Mevcut log, Kimlik ve Erişim modelinde meydana gelen en son olayların bir setidir. İkinci kaynak URI'si ise, önceden arşivlenmiş event-based notification'ların bildirimlerin tamamını almak ve gezinmek için kullanılır. Peki, neden hem mevcut log'lara hem de farklı archived notification log'larına ihtiyaç var? **Alan Olayları (Domain Events)** ve **Bağlamların Entegrasyonu (Integrating Bounded Contexts)** bölümlerinde, **beslemeye dayalı (feed-based) bildirimlerin nasıl çalıştığına dair detaylar** verilmektedir.
+    
+Şu an için, ProjectOvation ekibi tüm durumlarda REST kullanmaya kesin karar vermiş değil. Örneğin, CollabOvation ekibiyle mesajlaşma altyapısı kullanıp kullanmama konusunda görüşmeler sürüyor. RabbitMQ kullanımı da değerlendiriliyor. Ancak, şu anki Kimlik ve Erişim Bağlamı ile entegrasyonlar REST tabanlı olacak.
+
+Şimdilik teknoloji detaylarının çoğunu resmin dışında bırakalım ve etkileşime giren nesnelerin her birinin rolünü daha yakından ele alalım. Aşağıda, Şekil 3.9'daki sıralı diyagramda görselleştirilen entegrasyon adımlarının açıklaması yer almaktadır:
+    
+- `MemberService`, `ProductOwner` ve `TeamMember` nesnelerini yerel modele sağlamakla sorumlu bir `Domain Service`’dir. Bu servis, temel ***Anticorruption Layer***’ın arayüzünü oluşturur. Özellikle `maintainMembers()` metodu, Kimlik ve Erişim Bağlamından gelen yeni bildirimleri periyodik olarak kontrol etmek için kullanılır. Bu metot, modelin normal istemcileri tarafından doğrudan çağrılmaz. Belirli aralıklarla çalışan bir zamanlayıcı (timer) tetiklendiğinde, bildirim alan bileşen `MemberService`'in `maintainMembers()` metodunu çağırır. Şekil 3.9'da, bu zamanlayıcının alıcısı (recipient) olarak `MemberSynchronizer` gösterilmiştir ve bu bileşen çağrıyı `MemberService`'e devreder.
+        
+- `MemberService`, `IdentityAccessNotificationAdapter`’a yetki devreder. Bu bileşen, Domain Service ile uzak sistemin Open Host Service’i arasında bir Adaptör (Adapter) rolü oynar. Adaptör, uzak sisteme istemci olarak davranır. Uzak NotificationResource ile olan etkileşim diyagramda gösterilmemiştir.
+        
+3.  Adaptör, uzak Open Host Hizmeti’nden yanıt aldıktan sonra, bunu `MemberTranslator`’a yönlendirir. `MemberTranslator`, Published Language ortamını yerel sistemin kavramlarına çevirir.
+Eğer yerel `Member` nesnesi zaten varsa, çeviri işlemi mevcut etki alanı nesnesini günceller.
+Bu, `MemberService`'in kendi içindeki `updateMember()` metodunu çağırmasıyla belirtilir. `Member` sınıfının alt sınıfları olan `ProductOwner` ve `TeamMember`, yerel bağlamsal kavramları yansıtır.
+
+![Figure 3.9](./images/figure-3-9.png)
+
+**Figure 3.9:** Agile Project Management Context ve Identity and Access Anticorruption Katmanının iç işleyişine bir bakış
+
+***Teknolojilere veya entegrasyon ürünlerine odaklanmamalıyız.*** Bunun yerine, Bounded Context'leri temiz bir şekilde ayırarak, her bir bağlamı saf tutabilir ve diğer bağlamlardaki verileri kendi bağlamımızda kavramları ifade etmek için kullanabiliriz.
+
+Diyagramlar ve destekleyici metinler, Bağlam Haritası (Context Map) dokümanlarının nasıl oluşturulabileceğini örneklendirir. Bu doküman kapsamlı olmak zorunda değildir, ancak yeni bir proje üyesinin süreci hızlıca kavrayabilmesi için yeterli arka plan ve açıklama sağlamalıdır. Ancak, ekibin işine yarayacaksa böyle bir doküman oluşturulmalıdır.
+
+***Collaboration Context ile Entegrasyon***
+
+Şimdi, Agile Project Management Context'in Collaboration Context ile nasıl etkileşim kurduğunu ele alalım. Burada da **bağımsızlık (autonomy)** hedefleniyor, ancak bu, sistemin bağımsız çalışmasını sağlamak adına bazı zorluklar doğuruyor.
+
+ProjectOvation, CollabOvation tarafından sağlanan ek özelliklere sahiptir. Bunlar arasında:
+
+- Proje bazlı forum tartışmaları    
+- Paylaşılan takvim planlaması
+    
+Kullanıcılar doğrudan CollabOvation ile etkileşime girmeyecek. ProjectOvation, belirli bir kiracının (tenant) bu özelliklere sahip olup olmadığını belirlemeli ve eğer sahipse, ilgili kaynakları CollabOvation içinde kendi başına oluşturmalıdır.
+
+Bir Ürün (Product) Oluşturma Kullanım Senaryosunu ele alalım:
+
+***Ön Koşul:*** İş birliği (collaboration) özelliği etkinleştirilmiş olmalıdır (bu seçenek satın alınmış olmalıdır).
+
+1. Kullanıcı, Ürün tanımlayıcı bilgilerini sağlar. 
+2. Kullanıcı, bir ekip tartışması başlatmak istediğini belirtir.
+3. Kullanıcı, tanımlanan Ürünün oluşturulmasını talep eder. 
+4. Sistem, Ürünü bir Forum ve Tartışma (Discussion) ile birlikte oluşturur.
+
+Bu senaryoda, **Forum ve Tartışma (Discussion), Collaboration Context içinde oluşturulmalıdır.** Buna karşılık, **Identity and Access Context'te kiracı (tenant) zaten oluşturulmuş olur ve kullanıcılar, gruplar ve roller önceden tanımlanmıştır.** Bu bağlamda, ilgili olaylara ilişkin bildirimler zaten sistem tarafından sağlanmaktadır. Ancak Agile Project Management Context'te ihtiyacımız olan nesneler henüz var değildir ve biz talep edene kadar da var olmayacaktır. Bu da bağımsız çalışabilme açısından bir engel oluşturur, çünkü Collaboration Context'in mevcut ve erişilebilir olmasına bağımlıyız. Bağımsızlık hedefi düşünüldüğünde, bu durum önemli bir tasarım zorluğu ortaya çıkarır.
+
+> ***"Discussion" Kavramı Neden İki Bağlamda da Kullanılıyor?***
+>
+> Bu durum ilginçtir, çünkü her iki Bounded Context’te de aynı kavram ismi (Discussion) kullanılıyor, ancak bunlar farklı türde nesneler olup farklı duruma ve davranışlara sahiptir.
+>
+> Collaboration Context'te _Discussion bir Aggregate_ olup, kendisine bağlı bir Post kümesini yönetir. Bu Post'lar da bağımsız Aggregate'lerdir. Buna karışın Agile Project Management Context'te ise _Discussion bir Value Object_’tir ve sadece Collaboration Context’teki gerçek Discussion nesnesine referans tutar. Ancak, 13. bölümde entegrasyonlar uygulanırken, ekip Agile PM Context içinde farklı türdeki Tartışma (Discussion) nesnelerini güçlü bir şekilde (strongly typed) tanımlamanın önemli olduğunu keşfedecektir.
+
+**Domain Events (8)** ve **Event-Driven Architecture (4)** kullanarak ***eventual consistenc***’den yararlanmamız gerekiyor. Yerel sistemimiz tarafından üretilen bildirimleri (notifications) yalnızca uzak sistemlerin tüketebileceğine dair bir kural yoktur. Örneğin, modelimiz tarafından bir `ProductInitiatedDomainEvent` yayımlandığında, bu event bizim kendi sistemimiz tarafından da ele alınır. Yerel event handler, Forum ve Tartışma (Discussion) nesnelerinin uzaktan oluşturulmasını talep eder. Bu işlem **RPC ile yapılabilir.** Ancak, uzaktaki iş birliği (collaboration) sistemi o an için mevcut değilse, yerel handler belirli aralıklarla tekrar denemeye devam eder ve nihayet başarılı olana kadar süreci sürdürür. **Mesajlaşma (messaging) destekleniyorsa,** yerel handler iş birliği sistemine bir mesaj gönderir. CollabOvation, kaynak oluşturma tamamlandığında kendi mesajıyla yanıt verir. ProjectOvation içindeki Event Handler, bu bildirimi aldığında Ürün (Product) nesnesini, yeni oluşturulan Tartışma (Discussion) nesnesinin kimlik referansı ile günceller.
+        
+***Peki, Ürün Sahibi veya Ekip Üyeleri Tartışmayı (Discussion) Daha Önce Kullanmak İsterse Ne Olur?*** Mevcut olmayan (henüz oluşturulmamış) bir tartışma modelde bir hata (bug) olarak mı görülmelidir Sistem bu durumda güvenilmez mi çalışacaktır? Aslında herhangi bir abonelik sahibi (tenant), iş birliği eklentisini satın almamış olabilir. Bu, teknik olmayan bir sebepten dolayı da kaynağın mevcut olmamasına neden olabilir. Bu yüzden eventual consistency’yi göz ardı etmeden bir modelleme çözümü geliştirmek gereklidir.
+
+Tüm erişilememe senaryolarını açık bir şekilde ele almak en zarif çözümlerden biridir. Bunu yapmak için, **Value Objects (6)** içinde açıklanan bir **Standard Type**’ı **State Pattern [Gamma et al.]** kullanarak uygulamayı düşünebiliriz.
+
+```
+public enum DiscussionAvailability {
+	ADD_ON_NOT_ENABLED, NOT_REQUESTED, REQUESTED, READY;
+}
+
+public final class Discussion implements Serializable {
+	private DiscussionAvailability availability;
+	private DiscussionDescriptor descriptor;
+	...
+}
+
+public class Product extends Entity {
+	private Discussion discussion;
+	... 
+}
+```
+
+Bu tasarımı kullanarak, `Discussion`bir Value Object olarak yanlış kullanımlardan korunur, çünkü `DiscussionAvailability` tarafından tanımlanan State (Durum) onu korur. Birisi Ürün (Product) hakkında bir tartışmaya katılmaya çalıştığında, sistem güvenli bir şekilde tartışmanın mevcut durumunu gösterebilir. Eğer Discussion hazır (READY) değilse, kullanıcıya şu üç mesajdan biri gösterilir:
+
+- Takım iş birliğini kullanmak için eklenti seçeneğini satın almanız gerekiyor.   
+- Ürün sahibi, bir ürün tartışmasının oluşturulmasını talep etmedi.
+- Tartışma kurulumu henüz tamamlanmadı; lütfen daha sonra tekrar kontrol edin.
+
+Eğer Discussion READY durumundaysa, tüm takım üyelerinin tam katılımına izin verilir.
+
+İş birliği seçeneklerinin açık olması bir satış stratejisi olabilir. İlk hata mesajında ima edildiği gibi, iş birliği seçeneklerinin satın alınmadan önce bile seçilebilir olması iş açısından bilinçli bir tercih olabilir. _İş birliği arayüzünü açık bırakmak, kullanıcıların bu özelliği satın almaları için teşvik edici bir etki yaratabilir._ Sonuçta, bu özelliği her gün kullanmak isteyen ancak erişimi olmayan kullanıcılar, yönetime satın almaları için baskı yapabilir. Bu nedenle, ***availability state (mevcut olma durumu) kullanmanın yalnızca teknik değil, ticari faydaları da bulunmaktadır.***
+
+Şu an ekip, iş birliği entegrasyonunun tam olarak nasıl olacağından emin değil. Ancak Customer-Supplier görüşmeleri için Şekil 3.10’daki diyagramı hazırladılar. Büyük olasılıkla, Agile Project Management Context, Collaboration Context ile entegrasyonunu yönetmek için ikinci bir Anticorruption Layer (ACL) kullanacaktır. Bu yapı, Identity and Access Context ile entegrasyonda kullanılan ACL’ye benzer olacaktır. Diyagramda temel sınır nesneleri (boundary objects) gösterilmektedir ve bunlar kimlik ve erişim yönetimi entegrasyonu için kullanılan nesnelere benzemektedir. Aslında tek bir `CollaborationAdapter` bulunmamaktadır; bu, şu an bilinmeyen ancak gelecekte gerekli olacak birkaç adapterin bir temsili olarak yer almaktadır.
+
+Yerel Bağlam (Local Context) içinde `DiscussionService` ve `SchedulingService` gösterilmektedir.  
+Bunlar, iş birliği sisteminde tartışmaları ve takvim girişlerini yönetmek için kullanılabilecek Domain Servisleri olarak temsil edilmektedir. Gerçek mekanizmalar, ekipler arasındaki Customer-Supplier görüşmeleri sonucunda belirlenecektir. Bu entegrasyonlar, **"Bounded Context’leri Entegre Etme" (Bölüm 13)** kapsamında uygulanacaktır.
+
+Ekip, modelin bazı bölümlerini şimdiden anlayabiliyor. Örneğin, bir tartışma oluşturulduğunda ve sonucu yerel bağlama (Context) iletildiğinde ne olur? **Asenkron bileşen** (RPC istemcisi veya mesaj işleyici) Product nesnesine `attachDiscussion()` metodunu çağırarak yeni bir Discussion Value örneği iletir. Uzaktaki kaynaklara bağımlı olan tüm yerel Aggregateler, bu şekilde güncellenerek yönetilir.
+
+![Figure 3.10](./images/figure-3-10.png)
+
+**Figure 3.10:**Agile Project Management Context ve Collaboration Context arasındaki olası entegrasyon bileşenlerinin Anticorruption Katmanı ve Open Host Hizmetinin yakından gösterimi
+    
+Bu inceleme, Context Maps hakkında bazı yararlı detaylara değindi. Ancak, aşırı detaylandırmadan kaçınılmalıdır. Örneğin, Modülleri (Modules - 9. bölüm) dahil edebilirdik, ancak bunlar kendi özel bölümlerine ayrıldı. Ekip için gerçekten kritik olan yüksek seviyeli unsurları ekleyin. Ancak, gereksiz detaylar eklenmeye başlandığında bunu geri çevirmekte tereddüt etmeyin.
+    
+Diyagramları ve Context Maps’i fiziksel olarak duvara asın veya ekip odasında sergileyin. Bunları bir takım wiki’sine yükleyin, ancak unutulmuş bir proje arşivi haline gelmediğinden emin olun. Proje hakkındaki tartışmaları sürekli olarak Context Map’e geri yönlendirerek, yararlı güncellemeler yapılmasını sağlayın.
+
+## Sonuç
+
+Bu bölüm, Context Mapping açısından kesinlikle çok verimliydi.
+
+- Bağlam Haritalarının (Context Maps) ne olduğunu, ekibinize nasıl yardımcı olduğunu ve bunları nasıl kolayca oluşturabileceğinizi tartıştık.
+- SaaSOvation'ın üç Bounded Context’ini ve bunları destekleyen Context Map'leri detaylı bir şekilde incelediniz.
+- Haritalama (mapping) kullanarak, her bir Bağlam arasındaki entegrasyonlara derinlemesine baktınız.
+- Anticorruption Layer’ı destekleyen sınır nesnelerini ve bunların etkileşimlerini değerlendirdiniz.
+- REST tabanlı kaynaklar ile tüketici alan modelindeki karşılık gelen nesneler arasındaki yerel eşlemeyi gösteren bir Çeviri Haritası (Translation Map) üretme sürecini gördünüz.
+
+Her proje burada gösterilen detay seviyesine ihtiyaç duymayabilir. Bazıları daha fazlasına gereksinim duyabilir. Önemli olan, anlamayı pratiklikle dengelemek ve gereksiz ayrıntılara boğulmaktan kaçınmaktır. ***Unutmayın,*** proje ilerledikçe çok detaylı grafiksel bir haritayı güncel tutmak zor olabilir. Bunun yerine, duvara asılabilecek ve ekip üyelerinin tartışmalar sırasında gösterebileceği haritalardan daha fazla fayda sağlayacağız. Ceremony odaklı yaklaşımları reddedip, basitlik ve çevikliği (agility) benimsediğimizde, bizi ileriye taşıyan ve projeyi yavaşlatmayan faydalı Context Map'ler üretebiliriz.
