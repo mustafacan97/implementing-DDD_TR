@@ -330,4 +330,148 @@ SaaSOvation takımları, Hexagonal Architecture'ı kullanmanın avantajlarını 
 
 Hexagonal Architecture çok yönlü olduğundan, sistemin ihtiyaç duyduğu diğer mimarileri destekleyen bir temel olabilir. Örneğin, _Service-Oriented_, _REST_ ya da _Event-Driven Architecture_ gibi yapıları dahil edebilir; _CQRS_ kullanabilir; bir _Data Fabric_ ya da _Grid-Based Distributed Cache_ uygulayabilir; ya da _Map-Reduce_ dağıtık ve paralel işlem ekleyebiliriz. Bunların çoğu bu bölümde daha sonra tartışılacak. Hexagonal tarzı, bu ek mimari seçeneklerin her birini desteklemek için güçlü bir temel oluşturur. Başka yollar da vardır, ancak bu bölümün geri kalanında, her bir konuyu geliştirirken Ports ve Adapters'ın kullanılacağını varsayın.
 
-*** 173. sayfada kaldım.
+## Service-Oriented (Hizmet Odaklı Mimari - SOA)
+
+Service-Oriented Architecture (SOA), farklı kişiler için farklı anlamlara gelebilir. Bu durum, SOA hakkında tartışmaları biraz zorlaştırabilir. Bu yüzden, ortak bir zemin bulmak ya da en azından bu tartışma için belirli bir çerçeve tanımlamak en iyisidir. _Thomas Erl'in_ tanımladığı **SOA prensiplerini** göz önünde bulunduralım. Hizmetlerin daima birlikte çalışabilir olmasının yanı sıra, aşağıda Tablo 4.1'de belirtilen sekiz tasarım prensibine sahip olması gerekir:
+
+***Tablo 4.1: Hizmetlerin Tasarım Prensipleri***
+| Hizmet Tasarım Prensibi | Açıklama |
+| ----------------------- | -------- |
+| 1. Service Contract | Hizmetler, amaçlarını ve yeteneklerini bir veya daha fazla açıklama belgesi ile ifade eder. |
+| 2. Service Loose Coupling | Hizmetler, bağımlılıklarını en aza indirir ve yalnızca birbirlerinden haberdar olurlar. |
+| 3. Service Abstraction | Hizmetler, yalnızca sözleşmelerini yayınlar ve iç mantıklarını istemcilerden gizler. |
+| 4. Service Reusability | Hizmetler, daha büyük ve karmaşık hizmetler oluşturmak için başkaları tarafından tekrar kullanılabilir. | 
+| 5. Service Autonomy | Hizmetler, bağımsız kalabilmek için kendi ortamlarını ve kaynaklarını kontrol eder. Bu sayede tutarlılık ve güvenilirlik sağlanır. |
+| 6. Service Statelessness | Hizmetler, durum yönetimini mümkün olduğunca istemcilere bırakır. Ancak bu, Hizmet Özerkliği ile çelişmemelidir. |
+| 7. Service Discoverability | Hizmetler, metadata ile tanımlanır ve bu sayede keşfedilebilir. Bu, hizmet sözleşmelerinin anlaşılmasını sağlar ve tekrar kullanılabilirliği artırır. |
+| 8. Service Composability | Hizmetler, büyüklükleri ve karmaşıklıkları ne olursa olsun, daha geniş kapsamlı hizmetler içinde bir araya getirilebilir. |
+
+![Figure 4.5](./images/chapter4/figure-4-5.png)
+
+**Figure 4.5:** REST, SOAP ve mesajlaşma hizmetleri ile SOA'yı destekleyen Hexagonal Architecture
+
+Hizmet sınırının en solda ve alan modeli (domain model)'nin merkezde olduğu bir Hexagonal Mimari ile yukarıda bahsedilen prensipleri birleştirebiliriz. Şekil 4.5, temel mimariyi göstermektedir. Bu yapıda, tüketiciler (consumers) hizmetlere REST, SOAP ve mesajlaşma (messaging) yoluyla erişir. Dikkat edilmesi gereken önemli bir nokta, Hexagonal tabanlı bir sistemin birden fazla teknik hizmet uç noktasını destekleyebilmesidir. Bu da SOA içinde DDD'nin nasıl kullanıldığına doğrudan etki eder.
+
+SOA'nın ne olduğu ve ne tür bir değer sunduğu konusunda görüşler oldukça farklıdır, bu yüzden burada anlatılanlara katılmamanız şaşırtıcı olmaz. **Martin Fowler** bu durumu _"hizmet odaklı belirsizlik" (service-oriented ambiguity)_ olarak adlandırmaktadır. Bu yüzden, burada SOA’yı kesin bir şekilde tanımlamaya çalışmak yerine, ***SOA Manifestosu'nda belirtilen öncelikler ile DDD'nin nasıl uyum sağladığına dair bir bakış açısı sunacağım***.
+
+İlk olarak, Manifesto'ya katkıda bulunanlardan biri tarafından ifade edilen pragmatik bakış açılarını dikkate almak önemli bir bağlam sağlamaktadır. Manifesto üzerine yorum yapan Tilkov, bizi SOA hizmetlerinin ne olabileceğini anlamaya en azından bir ya da iki adım daha yaklaştırıyor:
+
+> _"[Manifesto] bana bir hizmeti (service) ya bir SOAP/WSDL arayüzleri seti ya da bir RESTful kaynak koleksiyonu olarak görme seçeneği sunuyor... Bu bir tanımlama girişimi değil—hepimizin üzerinde uzlaşabileceği değerleri ve prensipleri bulma çabasıdır."_
+
+Stefan’ın yorumları dikkate değerdir. Bir fikir birliği sağlamak her zaman faydalıdır ve büyük ihtimalle bir iş hizmetinin (business service), çeşitli teknik hizmetler tarafından sağlanabileceği konusunda hemfikir olabiliriz.
+
+Teknik hizmetler RESTful kaynakları, SOAP arayüzleri, Mesaj türleri olabilir. Business service, bir _business stratejisini_ temsil eder ve iş ile teknolojiyi birleştiren bir yaklaşımdır. Bununla birlikte, tek bir iş hizmeti, tek bir Alt Alan (Subdomain) veya Sınırlandırılmış Bağlam (Bounded Context) ile birebir eşleşmez. Şüphesiz, hem sorun alanı hem de çözüm alanı değerlendirmelerini gerçekleştirirken, bir business service'in her birinden bir dizi içerdiğini göreceğiz.  Bununla beraber Şekil 4.5, yalnızca tek bir Sınırlandırılmış Bağlamın mimarisini gösterir. Bu bağlam içinde bir dizi RESTful kaynak, SOAP arayüzleri ve Mesaj türleri tarafından sağlanan teknik hizmetler bulunur. Ancak geniş bir SOA çözümünde, birden fazla Sınırlandırılmış Bağlam (Bounded Context) yer almalıdır. Bu bağlamlardan her biri Hexagonal Mimariyi kullanabilir veya farklı bir mimari tercih edebilir. SOA veya DDD, teknik hizmetlerin nasıl tasarlanması ve dağıtılması gerektiğini kesin olarak belirlemez, çünkü birçok farklı seçenek mevcuttur.
+
+DDD kullanırken amacımız, iyi tanımlanmış ve kapsamlı bir Sınırlandırılmış Bağlam (Bounded Context) oluşturmaktır. Mimari tercihlerimiz, alan modelinin (domain model) büyüklüğünü belirlememelidir. Eğer bir veya birkaç teknik hizmet uç noktası (örneğin, tek bir REST kaynağı, tek bir SOAP arayüzü veya tek bir mesaj türü), Bounded Context tanımlayan ana faktör haline gelirse, çok sayıda küçük Bounded Context'ler oluşturmak zorunda kalırız ve her biri yalnızca bir Entity ve küçük bir Aggregate içerebilir. Bu durumda, bir kurumsal sistem içinde yüzlerce küçük Sınırlandırılmış Bağlam oluşabilir.
+
+Bazıları bu yaklaşımın teknik avantajları olduğunu düşünebilir, ancak bu durum stratejik DDD'nin temel hedeflerine aykırıdır. Eksiksiz ve kapsamlı Ortak Dil (Ubiquitous Language) oluşturmayı zorlaştırır. SOA Manifestosu'nun prensipleriyle de çelişebilir. Özellikle SOA Manifestosu'nun aşağıdaki iki temel ilkesi, DDD’nin stratejik yaklaşımıyla doğrudan örtüşmektedir:
+
+1.  İş değeri, teknik stratejinin önünde gelir.
+2.  Stratejik hedefler, projeye özgü faydalardan daha önemlidir.
+
+Eğer bu ilkeleri benimsersek, *teknik bileşen mimarisi kararları (örneğin, REST mi SOAP mı kullanılacağı), DDD’nin model bölümlendirme (partitioning) sürecinde ana faktör olmamalıdır*.
+
+---
+
+SaaSOvation ekipleri zor ama önemli bir ders öğrenmek zorunda kaldı: *Dilsel faktörlere (linguistic drivers) odaklanmanın, DDD ile daha iyi uyum sağladığını fark ettiler.* Sahip oldukları üç Bounded Context, hem iş süreçleri hem de teknik hizmetler açısından SOA'nın hedefleriyle uyumludur.
+
+---
+
+Bounded Contexts (2), Context Maps (3) ve Integrating Bounded Contexts (13) bölümlerinde tartışılan üç örnek modelin her biri, tek bir dilsel olarak iyi tanımlanmış domain model'i temsil eder. Bu domain modellerinin her biri, iş hedeflerini karşılayan bir SOA'yı uygulayan açık hizmetler (open services) kümesiyle çevrelenmiştir.
+
+## Temsili Durum Transferi—REST
+
+***Stefan Tilkov tarafından katkıda bulunulmuştur***
+
+REST, son birkaç yılın en çok kullanılan ve en çok yanlış anlaşılan mimari terimlerinden biri haline geldi. Her zamanki gibi, farklı insanlar REST kısaltmasını kullanırken farklı şeyleri kasteder.
+
+- Bazıları, REST'in SOAP kullanmadan XML’i HTTP üzerinden göndermek anlamına geldiğini düşünür.
+- Bazıları, REST'i HTTP ve JSON kullanmakla eşdeğer görür.
+- Diğerleri, REST yapmak için metot argümanlarını URI sorgu parametreleri olarak göndermek gerektiğine inanır.
+
+Tüm bu yorumlar yanlıştır. Ancak şanslıyız ki, birçok diğer kavramın (örneğin, "components" veya "SOA") aksine, REST’in ne anlama geldiğine dair otoriter bir kaynak vardır:  
+- **Roy T. Fielding'in doktora tezi**, bu terimi ortaya atan ve çok net bir şekilde tanımlayan çalışmadır.
+
+### REST Bir Mimari Stil Olarak
+
+REST’i anlamanın ilk adımı, ***mimari stil*** kavramını kavramaktır. Mimari stil, mimari için neyse, tasarım deseni de belirli bir tasarım için odur. **Farklı somut uygulamalar arasında ortak olan yönleri soyutlayan bir yaklaşımdır** ve teknik detaylarda kaybolmadan avantajlarını tartışmaya olanak tanır. Dağıtık sistemler mimarisinde pek çok farklı mimari stil vardır. Örneğin, *İstemci-sunucu (client-server) mimarisi*, *Dağıtılmış nesne tabanlı mimari*. Fielding’in doktora tezinin ilk bölümleri, farklı mimari stilleri ve bunlara uyan bir mimarinin yerine getirmesi gereken **kısıtlamaları** açıklar. Bu mimari stiller ve kısıtlamalar teorik görünebilir ve bu doğrudur. Ancak bunlar, Fielding’in tanımladığı (o zamanlar) yeni bir mimari stilin temelini oluşturur. REST, yani Web’in mimarisinin uyum sağlaması gereken mimari stildir.
+
+Elbette Web, yani onun en önemli standartları olan URI, HTTP ve HTML, Fielding’in doktora tezinden önce vardı. Ancak Fielding, HTTP 1.1’in standartlaştırılmasında önemli bir rol oynadı ve Web’in bugün bildiğimiz haliyle oluşmasını sağlayan tasarım kararlarında büyük bir etkiye sahipti.
+
+Bu açıdan bakıldığında, **REST**, Web’in mimarisinin sonradan çıkarılan teorik bir genellemesidir.
+
+REST Neden Web Servisleri ile Eş Anlamlı Hale Geldi? Peki neden bugün REST’i belirli bir sistem geliştirme yöntemiyle veya özellikle Web servisleri inşa etme biçimiyle özdeşleştiriyoruz? Bunun sebebi, **Web protokollerinin** farklı şekillerde kullanılabilmesidir. Bazı kullanım şekilleri, bu protokollerin orijinal tasarım hedeflerine uygundur. Bazıları ise bu hedeflerle uyumlu değildir. Bu durumu açıklamak için veritabanı yönetim sistemleri (RDBMS) dünyasından bir benzetme yapabiliriz:
+
+✅ **Doğru kullanım**:  
+Bir ilişkisel veritabanını (RDBMS), tablo, sütun, yabancı anahtar ilişkileri, görünümler, kısıtlamalar gibi kavramlara uygun olarak kullanırsınız.
+
+❌ **Yanlış kullanım**:  
+Tek bir tablo oluşturup, içinde yalnızca "key" ve "value" adında iki sütun tanımlarsınız. Sonra da tüm veriyi serialized nesneler halinde "value" sütununa koyarsınız. Böyle yaptığınızda hâlâ bir RDBMS kullanıyor olursunuz, ancak sistemin sunduğu sorgulama, join, sıralama ve gruplama gibi birçok avantajı kaybedersiniz.
+
+Aynı durum Web protokolleri için de geçerlidir. Web protokolleri, onları oluşturan temel fikirlere uygun olarak REST mimari stiline uygun kullanılabilir. Ya da bu prensiplere uyulmadan, **REST olmayan bir şekilde kullanılabilir.
+ 
+💡 Eğer **HTTP’yi "RESTful" bir şekilde kullanmayacaksak**, Web tabanlı dağıtık sistemler yerine **başka bir mimari model** tercih etmek daha mantıklı olabilir.  
+
+💡 Tıpkı **anahtar-değer (key-value) bazlı veri saklama** işlemlerinin, **NoSQL** gibi alternatif çözümlerle daha verimli yapılabileceği gibi.
+
+Evet, çeviriye ek olarak açıklamalar da ekledim. Sadece çeviri istiyorsan, doğrudan çeviri yapabilirim:
+
+### RESTful HTTP Sunucusunun Temel Unsurları
+
+Peki, “RESTful HTTP” kullanan bir dağıtım mimarisinin temel unsurları nelerdir? Öncelikle, sunucu tarafına bakalım. Burada, bir insanın bir web tarayıcısı aracılığıyla bir sunucuyu kullanması (bir “Web uygulaması”) ile başka bir istemcinin, örneğin seçtiğiniz bir programlama diliyle yazılmış bir istemcinin (bir “Web servisi”) kullanması arasında herhangi bir fark olmadığını unutmamalıyız.
+
+⚠️ Öncelikle, **kaynaklar (resources)** temel bir kavramdır. Peki nasıl? Bir sistem tasarımcısı olarak, dış dünyaya erişilebilir hale getirmek istediğiniz **anlamlı varlıkları** belirlersiniz ve her birine **benzersiz bir kimlik** atarsınız. Genel olarak, **her kaynak bir URI'ye sahiptir ve daha da önemlisi, her URI bir kaynağa işaret etmelidir**—yani dış dünyaya açtığınız varlıklar bireysel olarak adreslenebilir olmalıdır.
+
+Örneğin, her müşteri, her ürün, her ürün listesi, her arama sonucu ve belki de ürün kataloğundaki her değişiklik başlı başına bir kaynak olabilir. Kaynakların, bir veya daha fazla formatta temsilleri bulunur. İstemciler, bir XML veya JSON belgesi, bir HTML form post verisi ya da ikili bir format gibi temsiller aracılığıyla kaynaklarla etkileşime girerler.
+
+Bir sonraki önemli unsur, **durumsuz iletişim (stateless communication) ve kendini tanımlayan mesajlar (self-descriptive messages)** fikridir. Bir HTTP isteği, sunucunun işlemi gerçekleştirmesi için gereken tüm bilgileri taşır. Elbette sunucu kendi kalıcı durumunu kullanabilir, ancak istemci ve sunucu, ayrı taleplerin bir bağlam (oturum) oluşturmasını gerektiren bir sisteme dayanamaz. Bu, her kaynağa diğer taleplerden bağımsız olarak erişilebilmesini sağlar ve büyük ölçeklenebilirlik avantajı getirir.
+
+Kaynakları **nesneler** olarak düşünmek de mümkündür—ve aslında bu mantıklı bir yaklaşımdır. Ancak bu nesnelerin nasıl bir arayüze sahip olması gerektiği sorusu, REST’in diğer dağıtılmış sistem mimarilerinden ayrıştığı önemli bir noktadır. Burada, çağırılabilecek metotların kümesi sabittir ve tüm nesneler aynı arayüzü destekler. RESTful HTTP'de bu metotlar **HTTP fiilleridir—özellikle `GET, PUT, POST ve DELETE`.**
+
+İlk bakışta bu metodlar **CRUD (Create, Read, Update, Delete) işlemleriyle birebir aynı gibi görünebilir**, ancak aslında durum böyle değildir. Kalıcı bir varlığı temsil etmeyen ve belirli bir işlem uygulayan kaynaklar oluşturmak oldukça yaygındır. HTTP metodlarının her biri, HTTP spesifikasyonunda oldukça net bir şekilde tanımlanmıştır. Örneğin:
+- **GET metodu** yalnızca “güvenli” (safe) işlemler için kullanılmalıdır, 
+	- (1) İstemcinin açıkça talep etmediği bir etki yaratmamalıdır,  
+	- (2) Her zaman veri okuma işlemidir,  
+	- (3) Önbelleğe alınabilir (sunucu uygun yanıt başlıklarıyla bunu belirttiğinde).
+
+**Don Box** (SOAP Web servislerinin önde gelen isimlerinden biri), **HTTP’nin GET metodunun dünyadaki en optimize edilmiş dağıtılmış sistem altyapılarından biri olduğunu** söylemiştir. Bu da, Web’in ölçeklenebilirliği ve performansının büyük ölçüde HTTP’nin bu optimizasyonlarına dayandığını gösterir.
+
+Bazı HTTP metodları ⓘ ***idempotent***'tir, yani **bir hatayla karşılaşıldığında veya sonucu belirsiz olduğunda tekrar güvenle çağrılabilirler.** Bu `GET`, `PUT` ve `DELETE` için geçerlidir.
+
+ⓘ Son olarak, RESTful bir sunucu, istemcinin uygulamanın olası durum geçişlerini keşfetmesini sağlamak için hipermedyayı kullanır. Bu, Fielding'in tezinde **“Uygulama Durumunun Motoru Olarak Hipermedya (HATEOAS)”** olarak adlandırılır. Daha basit bir ifadeyle, **bireysel kaynaklar bağımsız değildir; birbirine bağlıdır.** Bu şaşırtıcı bir durum değildir—sonuçta Web’in adı da buradan gelir. Bir RESTful sunucu, yanıtlarına bağlantılar ekleyerek istemcinin bağlı kaynaklarla etkileşime girmesine olanak tanır.
+
+### RESTful HTTP İstemcisinin Temel Unsurları
+
+Bir RESTful HTTP istemcisi, bir kaynaktan diğerine geçiş yaparken ya kaynak temsillerinde bulunan bağlantıları takip eder ya da sunucuya veri göndererek işlem yaptığında yönlendirilir. Sunucu ve istemci, istemcinin dağıtım davranışını dinamik olarak etkilemek için iş birliği yapar. Bir URI, bir adresi çözümlemek için gerekli tüm bilgileri içerir—ana bilgisayar adı (host name) ve port dahil—. Hipermedya ilkesini takip eden bir istemci, sonunda farklı bir uygulama, farklı bir ana bilgisayar veya hatta farklı bir şirket tarafından barındırılan bir kaynağa erişebilir.
+
+<ins>*İdeal bir REST yapısında*</ins>, istemci **önceden belirlenmiş tek bir URI ile başlar** ve ardından **hipermedya kontrollerini takip ederek işlem yapar**. **Bu model, tarayıcıların HTML içeriklerini işleyerek ve kullanıcıya bağlantılar ve formlar sunarak çalıştığı modelin aynısıdır.** Tarayıcı, kullanıcının girdilerini alarak birçok farklı Web uygulamasıyla etkileşime girer—üstelik bu uygulamaların arayüzü veya iç uygulama detayları hakkında önceden bilgi sahibi olmadan.
+
+Elbette, bir tarayıcı tamamen bağımsız bir ajan değildir**—kararları almak için bir insana ihtiyaç duyar. Ancak, programlanmış bir istemci de aynı ilkeleri benimseyebilir. **Bazı mantıklar doğrudan kodlanmış olsa bile, istemci belirli URI yapılarını varsaymak veya tüm kaynakların aynı sunucuda bulunacağını düşünmek yerine bağlantıları takip eder ve bir ya da daha fazla medya türü hakkındaki bilgisini kullanır.
+
+### REST ve DDD
+
+Cazip görünse de, **bir domain modelini doğrudan RESTful HTTP üzerinden açığa çıkarmak önerilmez.** Bu yaklaşım genellikle sistem arayüzlerinin gereğinden daha kırılgan olmasına neden olur, çünkü domain modelindeki her değişiklik doğrudan sistem arayüzüne yansır. DDD ve RESTful HTTP’yi birleştirmek için iki alternatif yaklaşım bulunmaktadır.
+
+<ins>*İlk yaklaşım*</ins>, sistemin arayüz katmanı için ayrı bir Bounded Context oluşturmaktır ve bu arayüz modeli üzerinden gerçek Core Domain’e erişmek için uygun stratejiler kullanılır. Bu klasik bir yaklaşımdır çünkü sistemin arayüzünü, uzak servisler veya remote interface’ler yerine kaynak soyutlamaları kullanarak açığa çıkan bütünleşik bir yapı olarak görür.
+
+Bu yaklaşımı somut bir örnekle ele alalım. Bir çalışma grubunu yöneten bir sistem inşa ediyoruz. Bu sistem, görevleri, programları/randevuları, alt grupları ve bunların yönetimi için gerekli tüm süreçleri kapsıyor. Infrastructure detaylarından bağımsız saf bir domain modeli tasarlıyoruz. Bu model, Ubiquitous Language’i yakalar ve gerekli iş mantığını uygular. Bu titizlikle tasarlanmış domain modeline bir arayüz sağlamak için RESTful kaynaklardan oluşan bir uzak arayüz sunarız. Bu kaynaklar, istemcinin ihtiyaç duyduğu kullanım senaryolarını yansıtır—ki bu, saf domain modelinden oldukça farklı olabilir. Ancak, her kaynak Core Domain’e ait bir veya daha fazla Aggregate kullanılarak oluşturulur.
+
+Elbette, JAX-RS kaynak metodlarına domain nesnelerini doğrudan parametre olarak verebiliriz. Örneğin, `/:user/:task` URI’si `getTask()` metoduna eşlenerek bir `Task` nesnesi döndürebilir. **Bu basit gibi görünebilir, ancak büyük bir sorun içerir**. `Task` nesnesinin yapısında yapılan herhangi bir değişiklik, remote interface'e anında yansır ve birçok istemciyi bozabilir—üstelik değişiklik dış dünyayla tamamen ilgisiz olsa bile. Bu iyi bir durum değildir.
+
+Bu nedenle ilk yaklaşım tercih edilir: Core Domain ile sistem arayüz modelini birbirinden ayırmak. Böylece, Core Domain’de değişiklik yapıldığında bu değişikliğin sistem arayüz modeline yansıtılması gerekip gerekmediğine ve nasıl bir eşleme kullanılacağına ayrı ayrı karar verebiliriz. Bu yaklaşımda, sistem arayüz modeli için tasarlanan sınıflar genellikle Core Domain tarafından yönlendirilse de, kullanım senaryoları esas belirleyici faktördür. ***Not: Bu yaklaşımda bile özel bir medya türü (custom media type) tanımlayabiliriz.***
+
+<ins>*İkinci yaklaşım*</ins>, standart medya türlerine daha fazla önem verildiğinde uygundur. Eğer geliştirilen medya türleri sadece tek bir sistem arayüzünü değil, belirli bir kategoriye ait istemci-sunucu etkileşimlerini desteklemek için tasarlanıyorsa, her standart medya türünü temsil eden bir domain modeli oluşturulabilir. Bu domain modeli istemciler ve sunucular arasında yeniden kullanılabilir, ancak bazı REST ve SOA savunucuları bunu **anti-pattern** olarak görmektedir.   ***Not: Bu yaklaşım DDD terminolojisinde bir Shared Kernel veya Published Language olarak değerlendirilebilir.***
+
+Bu yaklaşım daha çok dıştan içe doğru ilerleyen, yatay kesitli bir yaklaşımdır. Önceki çalışma grubu ve görev yönetimi örneğinde, birçok yaygın format bulunur. Örneğin, *ical (iCalendar)* formatını ele alalım. Bu pek çok farklı uygulama tarafından kullanılabilen genel bir formattır. Bu durumda, önce bir medya türü (ical) seçeriz, ardından bu format için bir domain modeli oluştururuz. Bu model, yalnızca sunucu uygulamamız için değil, aynı formatı anlaması gereken diğer sistemler (örneğin bir Android istemcisi) için de kullanılabilir. Ancak, bu yaklaşımda sunucunun birçok farklı medya türüyle uğraşması gerekebilir ve aynı medya türü birden fazla sunucu tarafından kullanılabilir.
+
+Hangi yaklaşımın seçileceği büyük ölçüde sistem tasarımcısının yeniden kullanılabilirlik hedeflerine bağlıdır. Çözüm ne kadar özelleşmişse, ilk yaklaşım (Bounded Context kullanımı) o kadar faydalı olur. Çözüm ne kadar genel ve standartlaşmışsa, ikinci medya türü odaklı yaklaşım o kadar mantıklı hale gelir—bu yaklaşımın en uç noktası ise resmi bir standart kuruluşu tarafından kabul edilen bir format olmaktır.
+
+### Neden REST?
+
+Deneyimlerime göre, **REST prensiplerine uygun olarak tasarlanmış bir sistem, loose coupling vaadini yerine getirir**. Genel olarak, yeni kaynaklar eklemek ve mevcut kaynak temsillerine bağlantılar eklemek oldukça kolaydır. Ayrıca, gerektiğinde yeni formatlara destek eklemek de basittir**, bu da **sistemdeki bağlantıları çok daha az kırılgan hale getirir.
+
+**REST tabanlı bir sistem çok daha anlaşılırdır**, çünkü daha küçük parçalara—kaynaklara—bölünmüştür. Her kaynak ayrı ayrı test edilebilir, hata ayıklanabilir ve bağımsız bir giriş noktası olarak kullanılabilir.
+
+HTTP’nin tasarımı ve URI yeniden yazma ile önbellekleme gibi özellikleri destekleyen araçların olgunluğu, RESTful HTTP’yi hem gevşek bağlanırlık hem de yüksek ölçeklenebilirlik gerektiren mimariler için harika bir seçenek haline getirir.
+
+*** 181. sayfada kaldım.
