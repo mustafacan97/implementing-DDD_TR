@@ -474,4 +474,59 @@ Deneyimlerime göre, **REST prensiplerine uygun olarak tasarlanmış bir sistem,
 
 HTTP’nin tasarımı ve URI yeniden yazma ile önbellekleme gibi özellikleri destekleyen araçların olgunluğu, RESTful HTTP’yi hem gevşek bağlanırlık hem de yüksek ölçeklenebilirlik gerektiren mimariler için harika bir seçenek haline getirir.
 
-*** 181. sayfada kaldım.
+## Command-Query Sorumluluğu Ayrımı (CQRS)
+
+Depolar (Repositories) üzerinden kullanıcıların görmek istediği tüm verileri sorgulamak zor olabilir. Bu özellikle, kullanıcı deneyimi tasarımının birden fazla Küme (Aggregate) türü ve örneği arasında bölünmüş veri görünümleri oluşturduğu durumlarda geçerlidir. Domain model ne kadar karmaşıksa, bu durum o kadar sık karşılaşılır.
+
+Sadece Depolar kullanarak bu sorunu çözmek ideal olmayabilir. Tüm gerekli Aggregate örneklerini almak için istemcilerin birden fazla Repository kullanmasını gerektirebiliriz, ardından sadece ihtiyaç duyulan verileri bir **Veri Transfer Nesnesi (DTO - Data Transfer Object)** içinde birleştirebiliriz [Fowler, P of EAA]. Alternatif olarak, farklı Repository'lerde özel arama metotları (finders) tasarlayarak, tek bir sorgu ile parçalı verileri bir araya getirebiliriz. Bu çözümler uygunsuz görünüyorsa, kullanıcı deneyimi tasarımından ödün vermemiz gerekebilir ve görünümleri Aggregate sınırlarına sıkı sıkıya uydurmamız gerekebilir. Ancak, çoğu kişi uzun vadede böyle mekanik ve katı bir kullanıcı arayüzünün yeterli olmayacağı konusunda hemfikirdir.
+
+Peki, domain model'den view'lere veri eşlemeyi tamamen farklı bir şekilde ele alabilir miyiz? **Cevap, CQRS olarak bilinen mimari desende yatıyor**. Bu desen, sıkı bir nesne (veya bileşen) tasarım prensibi olan Command-Query Separation - CQS mimari seviyeye taşımaktan doğmuştur.
+
+<ins>*Bu prensip, Bertrand Meyer tarafından geliştirilmiştir ve şunu iddia eder:*</ins>
+
+> Her metot, ya bir işlem (command) olmalı ve bir eylem gerçekleştirmeli, ya da bir sorgu (query) olmalı ve çağrıyı yapan tarafa veri döndürmelidir, ancak ikisini birden yapmamalıdır. Başka bir deyişle, bir soru sormak cevabı değiştirmemelidir. Daha resmi olarak, bir metot yalnızca referans şeffaflığına sahipse ve yan etkileri yoksa bir değer döndürmelidir.
+
+ⓘ Bir nesne seviyesinde bu şu anlama gelir:
+
+1.  Eğer bir metot nesnenin durumunu değiştiriyorsa, bir komuttur (command) ve herhangi bir değer döndürmemelidir. Java ve C#’ta bu metodun dönüş tipi `void` olmalıdır.
+    
+2.  Eğer bir metot bir değer döndürüyorsa, bir sorgudur (query) ve doğrudan ya da dolaylı olarak nesnenin durumunu değiştirmemelidir. Java ve C#’ta bu metot, döndürdüğü değerin türüyle tanımlanmalıdır.
+
+Bu oldukça net bir yönergedir ve ona bağlı kalmanın hem teorik hem de pratik faydaları vardır. Ancak, Mimari bir desen olarak bunu DDD'de kullanırken neden ve nasıl uygularız?
+
+Şimdi, Bounded Contexts) içinde yer alan bir domain model'i gözünüzde canlandırın. Normalde Kümeler (Aggregates), hem komut hem de sorgu metotlarına sahip olur. Ayrıca, belirli özelliklere göre filtreleme yapabilen çeşitli bulucu (finder) metotları içeren Depolar (Repositories) bulunur. **CQRS ile, bu "normal" yaklaşımları terk ediyor ve veri sorgulama işini tamamen farklı bir şekilde tasarlıyoruz**.
+
+Öncelikle, **modelde geleneksel olarak bulunan tüm saf query sorumluluklarını, yalnızca commands çalıştıran sorumluluklardan ayırıyoruz. Kümeler (Aggregates), artık query metotları (getter’lar) içermeyecek, yalnızca command metotlarına sahip olacak.** 
+
+Repository, sadece bir `add()` veya `save()` metodu içerecek (hem oluşturma hem de güncellemeyi desteklemek için) ve yalnızca tek bir sorgu metoduna sahip olacak: `fromId()`. Bu tek sorgu metodu, bir Küme’nin (Aggregate) benzersiz kimliğini alıp onu döndürecek Repository artık belirli özelliklere göre filtreleme yaparak Küme (Aggregate) bulamayacak. Tüm bu sorgu yetenekleri modelden kaldırıldığında, bu model artık bir ***"command model"*** olarak adlandırılır. Ancak, kullanıcıya veri gösterebilmek için hala bir yol gereklidir. Bu yüzden, tamamen sorgular için optimize edilmiş ikinci bir model oluşturuyoruz: ***"query model"*** .
+
+> ***Bu Fazladan Karmaşıklık mı Getiriyor?***
+> 
+> Bu yaklaşım fazladan iş gibi görünebilir ve bir dizi sorunu çözerken başka bir dizi problem ekliyormuşuz gibi hissedebilirsiniz. Ancak bu yöntemi hemen göz ardı etmemek gerekir.
+> CQRS, yalnızca belirli bir "görünüm karmaşıklığı" sorununu çözmek için tasarlanmıştır. Yeni ve "havalı" bir yaklaşım olarak sırf özgeçmişe eklenmek için uygulanmamalıdır.
+
+> ***Farklı İsimlerle Bilinen Kavramlar***
+> 
+> CQRS içindeki bazı bileşenlerin farklı isimlerle anıldığını da bilmek önemlidir:
+> - ***Query model***, read model olarak da adlandırılır.
+> - ***Command model***, write model olarak da bilinir.
+
+Sonuç olarak, geleneksel domain model ikiye bölünecektir. **Command model** bir depoda, **Query model** ise başka bir depoda tutulur. Bunun sonucunda şekil 4.6'da gösterilen bileşenler kümesine benzer bir yapı elde ederiz. Bu deseni daha net anlamak için birkaç ek detay daha gereklidir.
+
+### CQRS’nin Alanlarını İnceleme
+
+Bu desenin ana alanlarını tek tek ele alalım. Öncelikle istemci ve sorgu desteğiyle başlayıp, ardından komut modeline ve sorgu modelinin nasıl güncellendiğine kadar ilerleyelim.
+
+![Figure 4.6](./images/chapter4/figure-4-6.png)
+
+**Figure 4.6:** CQRS ile istemcilerden gelen komutlar komut modeline tek yönlü olarak gider. Sorgular, sunum için optimize edilmiş ayrı bir veri kaynağına karşı çalıştırılır ve kullanıcı arayüzü veya raporlar olarak sunulur.
+
+***İstemci ve Sorgu İşlemcisi***
+
+İstemci (şemada en solda yer alır) bir Web tarayıcısı veya özel bir masaüstü kullanıcı arayüzü olabilir. Bir sunucuda çalışan bir dizi sorgu işlemcisi kullanır. Şema, sunucu(lar)daki katmanlar arasında mimari olarak önemli bölümleri göstermez. Var olan katmanlar ne olursa olsun, sorgu işlemcisi, bir veritabanında temel sorguları çalıştırmayı bilen basit bir bileşeni temsil eder; örneğin bir SQL deposu.
+
+Burada karmaşık katmanlar yoktur. En fazla, bu bileşen sorgu deposu veritabanında bir sorgu çalıştırır ve belki de sorgu sonucunu taşımak için bir formata (belki bir DTO, ama belki de değil) serileştirir, eğer gerekliyse. Eğer istemci Java veya C# ile çalışıyorsa, veritabanını doğrudan sorgulayabilir. Ancak bu, her bağlantı için bir veritabanı istemci lisansı gerektirebilir. Bağlantı havuzu kullanan bir sorgu işlemcisi kullanmak, en iyi seçenektir.
+
+Eğer istemci bir veritabanı sonuç kümesini (örneğin, JDBC türünde) tüketecekse, serileştirme gereksiz olabilir ama yine de istenebilir. Burada iki düşünce okulu vardır. Birincisi, nihai sadeliğin, sonuç kümesinin veya bunun çok temel bir şekilde wireframe (tasarım-UI) uyumlu serileştirilmiş halinin (XML veya JSON) istemci tarafından tüketilmesini gerektirdiğini savunur. Diğerleri ise DTO’ların oluşturulup istemci tarafından tüketilmesi gerektiğini savunur. Bu, bir zevk meselesi olabilir, ancak her zaman DTO’lar ve DTO Derleyicileri [Fowler, P of EAA] eklediğimizde karmaşıklık artar ve gerçekten gerekmedikçe bunlar kazara eklenmiş karmaşıklıklar olur. Her takım, hangi yaklaşımın projeleri için en iyi olduğunu belirler.
+
+*** 184. sayfa
