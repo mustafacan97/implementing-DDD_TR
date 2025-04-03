@@ -171,7 +171,7 @@ UI bileşenleri, **Application Layer**'nın doğrudan istemcileridir.
 
 **Application Services (14)**, Application Layer'da bulunur. **Domain Servisleri (7)**'nden farklıdırlar ve bu nedenle domain mantığından yoksundur. Persistence transaction ve security gibi konuları kontrol edebilirler. Ayrıca, diğer sistemlere yönelik Event tabanlı bildirimler göndermek veya kullanıcılara e-posta mesajları göndermek gibi işlemlerden sorumlu olabilirler. Domain modelinin doğrudan istemcileridir ancak kendileri iş mantığı içermez. Son derece hafif olurlar ve **Aggregate (10)** gibi domain nesneleri üzerinde gerçekleştirilen işlemleri koordine ederler. Uygulama Servislerinin birincil işlevi, model üzerindeki kullanım senaryolarını veya kullanıcı hikayelerini ifade etmektir. Dolayısıyla, bir Application Service'in ortak işlevi, Kullanıcı Arayüzü'nden parametreler alıp, bir **Repository (12)** kullanarak bir Aggregate örneği elde etmek ve ardından bu örnek üzerinde bazı komut işlemleri gerçekleştirmektir:
 
-```
+```java
 @Transactional
 public void commitBacklogItemToSprint(String aTenantId, String aBacklogItemId, String aSprintId) {
 	TenantId tenantId = new TenantId(aTenantId); 
@@ -234,7 +234,7 @@ Bu tanımın özünde, düşük seviyeli hizmetleri sağlayan bir bileşenin (bu
 
 Şekil 4.3'teki mimariye göre, Domain katmanında tanımlanan bir interface için Infrastructure katmanında implementasyonu olan bir Repository'imiz olacaktır:
 
-````
+````java
 package com.saasovation.agilepm.infrastructure.persistence;
 
 import com.saasovation.agilepm.domain.model.product.*;
@@ -285,7 +285,7 @@ Uygulama, istekleri API'si aracılığıyla alır. Uygulama sınırı veya iç h
 
 Aşağıdaki, JAX-RS kullanılarak yayımlanan bir RESTful kaynağını temsil etmektedir. Bir istek, HTTP giriş Port'u üzerinden gelir ve işleyici bir Adapter olarak hareket ederek, bir Application Service*e devreder:
 
-```
+```java
 @Path("/tenants/{tenantId}/products")
 public class ProductResource extends Resource { 
 
@@ -529,4 +529,154 @@ Burada karmaşık katmanlar yoktur. En fazla, bu bileşen sorgu deposu veritaban
 
 Eğer istemci bir veritabanı sonuç kümesini (örneğin, JDBC türünde) tüketecekse, serileştirme gereksiz olabilir ama yine de istenebilir. Burada iki düşünce okulu vardır. Birincisi, nihai sadeliğin, sonuç kümesinin veya bunun çok temel bir şekilde wireframe (tasarım-UI) uyumlu serileştirilmiş halinin (XML veya JSON) istemci tarafından tüketilmesini gerektirdiğini savunur. Diğerleri ise DTO’ların oluşturulup istemci tarafından tüketilmesi gerektiğini savunur. Bu, bir zevk meselesi olabilir, ancak her zaman DTO’lar ve DTO Derleyicileri [Fowler, P of EAA] eklediğimizde karmaşıklık artar ve gerçekten gerekmedikçe bunlar kazara eklenmiş karmaşıklıklar olur. Her takım, hangi yaklaşımın projeleri için en iyi olduğunu belirler.
 
-*** 184. sayfa
+***Sorgu Modeli (veya Okuma Modeli)***
+
+Sorgu modeli, denormalize bir veri modelidir. **Amacı, domain behavior sağlamak değil, yalnızca görüntüleme (ve muhtemelen raporlama) için veri sunmaktır.** Eğer bu veri modeli bir SQL veritabanıysa, her tablo belirli bir istemci görünümü (ekran) için verileri tutar. Tablo birçok sütun içerebilir, hatta belirli bir kullanıcı arayüzü görüntüleme görünümü için gereken tüm sütunların bir üst kümesini barındırabilir. Tablolardan, her biri tüm verinin mantıksal bir alt kümesi olarak kullanılan görünüm tabloları (view) oluşturulabilir.
+
+> ***Gerektiği Kadar Çok Görünüm İçin Destek Sağlayın***
+>
+> CQRS tabanlı görünümlerin geliştirme ve bakım açısından hem ucuz hem de geçici olabileceğini belirtmek gerekir. Özellikle, basit bir Event Sourcing mekanizması kullanılırsa (bu konuyla ilgili detaylar bölümün ilerleyen kısımlarında ve Ek A’da ele alınacaktır), tüm olaylar kalıcı bir depoya kaydedilebilir ve istenildiğinde yeniden yayımlanarak yeni kalıcı görünüm verileri oluşturulabilir. Bu sayede, tek bir görünüm sıfırdan bağımsız olarak yeniden oluşturulabilir veya tüm sorgu modeli tamamen farklı bir kalıcılık teknolojisine geçirilebilir. Bu esneklik, sürekli değişen kullanıcı arayüzü ihtiyaçlarını karşılayan görünümlerin kolayca oluşturulmasını ve yönetilmesini sağlar. Sonuç olarak, tablo paradigmasından uzaklaşan ve çok daha zengin kullanıcı deneyimleri sunan çözümler geliştirmek mümkün olur.
+
+Örneğin, bir tablo, normal kullanıcılar, yöneticiler ve adminler için kullanıcı arayüzlerinde yeterli veriyi gösterecek şekilde tasarlanabilir. Eğer her kullanıcı türü için ilgili bir veritabanı görünüm tablosu (view) oluşturulursa, her güvenlik rolüne uygun veri ayrılmış olur. Normal kullanıcıların görünüm bileşeni, normal kullanıcılar için oluşturulmuş tablo görünümünden tüm sütunları seçer. Yöneticilerin görünüm bileşeni, yöneticiler için oluşturulmuş tablo görünümünden tüm sütunları seçer. Böylece, normal kullanıcılar yöneticilerin görebildiği verilere erişemez.
+
+Tercihen, bir SELECT ifadesi yalnızca kullanılan görünümün birincil anahtarını gerektirmelidir. Aşağıdaki örnekte, sorgu işleyici (query processor), bir ürünün normal kullanıcılar için oluşturulmuş tablo görünümünden tüm sütunları seçmektedir:
+
+```sql
+SELECT * FROM vw_usr_product WHERE id = ?
+```
+
+**Not:** Buradaki tablo görünümü isimlendirme yöntemi zorunlu bir kural değildir; sadece örnek sorgunun amacını netleştirmek için kullanılmıştır.
+
+Birincil anahtar (id), komut modelindeki bir Ürün (Product) nesnesinin benzersiz kimliğine karşılık gelir. Veri modeli tasarımı, mümkün olduğunca her kullanıcı arayüzü görünüm türü için bir tablo oluşturma modelini takip etmeli ve uygulama güvenlik rollerini yansıtmak için gerektiği kadar tablo görünümü (view) içermelidir. Ancak, pratik olmak önemlidir.
+
+> ***Pratik Olun***
+> 
+> Örneğin, yüksek frekansta işlem yapan 25 yatırımcı olduğunu düşünelim. Her yatırımcı, diğerlerinin çoğunun göremediği menkul kıymetleri (SEC uyumluluğu nedeniyle) işlemektedir. Bu durumda 25 farklı tablo görünümü oluşturmak gereksiz ve bakım açısından zahmetli olabilir. Bunun yerine "yatırımcı filtresi" kullanmak daha uygun olacaktır. Aksi takdirde, çok fazla görünüm olması nedeniyle yönetim ve bakım zorlaşabilir.
+
+Pratikte, tek bir tablo görünümü yaklaşımını tamamen uygulamak zor olabilir. Bu yüzden, gerekli olduğunda sorguların birden fazla tabloyu veya tablo görünümünü birleştirmesi (JOIN işlemi) gerekebilir. Özellikle, sistemde birden fazla kullanıcı rolü varsa, farklı görünümler/tablolar arasında birleşimler yapmak kaçınılmaz olabilir.
+
+> ***Veritabanı Görünümleri Ek Yük Oluşturur mu?***
+>
+> Temel bir veritabanı tablo görünümü (view), arka plandaki tabloya yapılan güncellemeler sırasında ek bir maliyet oluşturmaz. View yalnızca bir sorgunun sonucunu temsil eder ve genellikle JOIN işlemi bile gerektirmez. Ancak, *materyalize (önbelleğe alınmış)* görünümler güncelleme maliyeti getirir, çünkü bu tür görünümlerde veriler kopyalanarak saklanır ve SELECT işlemlerine hazır hâle getirilir. ***Sonuç olarak, table ve view tasarımında dikkatli olunmalıdır, böylece sorgu modeli (query model) güncellemeleri en verimli şekilde gerçekleştirilir.***
+
+***İstemci, Komut İşlemeyi Yönlendirir (Client Drives Command Processing)***
+
+Kullanıcı arayüzü istemcileri, sunucuya komutlar göndererek (veya dolaylı olarak bir Uygulama Servisi metodunu çalıştırarak), komut modelindeki Aggregateler üzerinde belirli davranışları gerçekleştirilmesini sağlar. Gönderilen komut, çalıştırılacak davranışın adını ve gerekli parametreleri içerir. Bu komut paketi, serileştirilmiş bir metot çağrısıdır. Komut modeli, önceden dikkatlice tasarlanmış sözleşmeler (contracts) ve davranışlara sahip olduğu için, komutların bu sözleşmelerle eşleştirilmesi oldukça basittir.
+
+Bunu gerçekleştirebilmek için, kullanıcı arayüzünün komutun doğru şekilde parametrelendirilmesi için gerekli veriyi toplaması gerekir. Bu da kullanıcı deneyimi tasarımına büyük özen gösterilmesini gerektirir. Arayüz tasarımı, kullanıcıları doğru amaca yönlendirerek belirli bir komutu göndermelerini sağlamalıdır. En iyi yaklaşım, yönlendirici (inductive) ve görev odaklı bir kullanıcı arayüzü tasarlamaktır [Inductive UI]. Bu tasarım şu özelliklere sahiptir:  
+
+✅ Geçerli olmayan tüm seçenekleri filtreleyerek sadece ilgili komutlara odaklanır. 
+✅ Kullanıcının komutu mümkün olduğunca hassas ve doğru şekilde çalıştırmasını sağlar.
+
+Bununla birlikte, çıkarımsal (deductive) bir kullanıcı arayüzü tasarlamak da mümkündür; ancak burada da sistem, kullanıcının eylemlerine dayanarak açık bir komut oluşturmalıdır.
+
+***Komut İşleyicileri (Command Processors)***
+
+Gönderilen komut bir ***Command Handler/Processor*** tarafından alınır ve birkaç farklı tarzda uygulanabilir. Burada bu tarzları ve bunların bazı avantajlarını ve dezavantajlarını ele alıyoruz.
+
+Bir **_kategorize edilmiş tarzda (Categorized Style)_**, birden fazla Komut İşleyici içeren bir Uygulama Servisi oluşturabiliriz. Bu tarz, bir komut kategorisi için bir Uygulama Servisi arayüzü ve uygulaması oluşturur. Her Uygulama Servisi, kategoriye uyan parametrelerle donatılmış birden fazla metoda sahip olabilir. Bu tarzın temel avantajı basitliğidir. Kolay anlaşılır, oluşturulması ve bakımı kolaydır.
+
+Bir ***özel tarzda işleyici (Dedicated Style)*** oluşturabiliriz. Her biri tek bir metoda sahip, belirli bir komut için tek başına bir sınıf olur. Bu yaklaşımın açık avantajları vardır, her işleyici yalnızca tek bir sorumluluğa sahiptir, her biri bağımsız olarak dağıtılabilir, bazı komut türleri için yüksek yükleri yönetmek amacıyla işleyiciler ölçeklenebilir.
+    
+Bu, bizi ***mesaj tabanlı Komut İşleyici (Messaging Style)*** yöntemine götürür. Her komut bir asenkron mesaj olarak gönderilir ve özel tarzda tasarlanmış bir işleyiciye teslim edilir. Bu, her komut işleyicisinin yalnızca belirli türde mesajları almasını sağlar ve belirli bir türdeki işleyicilerin sayısı artırılarak yük yönetimi yapılabilir. Ancak bu yaklaşım varsayılan olarak kullanılmamalıdır, çünkü daha karmaşık bir tasarıma sahiptir. Öncelikle senkron çalışan bir Komut İşleyiciyle başlamak ve yalnızca ölçeklenebilirlik gereksinimleri ortaya çıktığında asenkron mesaja geçmek daha iyidir. Bununla birlikte, bazı kişiler asenkron işlemenin zamansal ayrışma (temporal decoupling) sağladığını ve sistemleri daha dayanıklı hale getirdiğini düşündüğü için bu yöntemi doğrudan tercih edebilir.
+
+Hangi tür işleyici kullanılırsa kullanılsın, **her biri diğerlerinden bağımsız olmalıdır.** Bir işleyicinin başka bir işleyiciye bağımlı olması onun bağımsız dağıtımını ve ölçeklenmesini zorlaştırır.
+
+Genellikle Komut İşleyiciler şu iki temel işlevi yerine getirir:
+
+1️⃣ Eğer komut yeni bir nesne oluşturuyorsa, yeni bir Aggregate örneği oluşturur ve Repository'ye ekler. 
+2️⃣ Eğer mevcut bir Aggregate ile çalışıyorsa, Repository’den ilgili Aggregate’yi alır ve komut metodunu çalıştırır.**
+
+```java
+@Transactional
+public void commitBacklogItemToSprint(String aTenantId, String aBacklogItemId, String aSprintId) {
+	TenantId tenantId = new TenantId(aTenantId); 
+	
+	BacklogItem backlogItem = backlogItemRepository.backlogItemOfId(tenantId, new BacklogItemId(aBacklogItemId)); 
+
+	Sprint sprint = sprintRepository.sprintOfId(tenantId, new SprintId(aSprintId)); 
+
+	backlogItem.commitTo(sprint);
+}
+```
+
+Command Handler tamamlandığında, tek bir Aggregate örneği güncellenmiş ve komut modeli tarafından bir Domain Olayı (Domain Event) yayınlanmış olur. Bu, sorgu modelinin güncellendiğinden emin olmak için kritik bir adımdır. Ayrıca, **Domain Events** ve **Aggregatea** konularında (8. ve 10. bölümler) tartışıldığı gibi, yayınlanan olay, bu komut tarafından etkilenen diğer Aggregate örneklerinin senkronizasyonunu sağlamak için de kullanılabilir. Ancak, bu ek Aggregate örneklerinin güncellenmesi, bu işlemin doğrudan parçası olmayacak ve ***zamanla tutarlı (eventually consistent)*** hale gelecektir.
+
+***Command Model (or Write Model) Executes Behavior***
+
+Komut modelinde her bir komut metodu çalıştırıldığında, işlemi bir Olay (Event) yayınlayarak tamamlar. Bu süreç, **Domain Olayları (8. Bölüm)** bölümünde açıklandığı gibidir. Devam eden örneği kullanırsak, `BacklogItem` komut metodunu aşağıdaki gibi tamamlayacaktır:
+
+```java
+public class BacklogItem extends ConcurrencySafeEntity  {
+	...
+	public void commitTo(Sprint aSprint) {
+		...
+		DomainEventPublisher
+			.instance() 
+			.publish(new BacklogItemCommitted(
+				this.tenant(), 
+				this.backlogItemId(), 
+				this.sprintId()));
+	}
+	...
+}
+```
+
+> ***Yayımlayıcı (Publisher) Bileşeninin Arkasında Ne Var?***
+>
+> Bu özel `DomainEventPublisher`, **Observer (Gözlemci) deseni** [Gamma ve diğerleri] üzerine kurulu hafif bir bileşendir. Olayların nasıl geniş çapta yayımlandığıyla ilgili ayrıntılar için Domain Olayları (8. Bölüm) bölümüne bakabilirsiniz.
+
+Bu bileşen, sorgu modelinin en güncel değişikliklerle güncellenmesini sağlayan temel unsurdur. Eğer Olay Kaydı (Event Sourcing) kullanılıyorsa, bu olaylar Aggregate'in son halini kalıcı olarak saklamak için de gereklidir (bu örnekte BacklogItem). Ancak, CQRS ile birlikte Event Sourcing kullanılması zorunlu değildir. İş gereksinimleri arasında Olay Kaydı zorunluluğu yoksa, komut modeli bir ORM kullanılarak ilişkisel bir veritabanına veya başka bir yöntemle kalıcı hale getirilebilir. Her durumda, sorgu modelinin güncellenmesini sağlamak için bir Domain Olayı yayımlanmalıdır.
+
+> ***Komutlar Neden Her Zaman Olay Yayımlamaz?***
+>
+> Bazı durumlarda, komutların işlenmesi bir olayın yayınlanmasına yol açmaz. Örneğin:
+>
+> - "En az bir kez" (at-least-once) mesajlaşma modeli kullanılıyorsa ve uygulama idempotent işlemler sağlıyorsa, tekrar iletilen bir mesaj sessizce göz ardı edilebilir.
+>
+> - Ayrıca, uygulama gelen komutları doğruluyorsa, yetkili istemciler geçerli komutlar göndereceğinden her zaman doğrulamadan geçecektir. Ancak yetkisiz istemciler (örneğin, saldırganlar) geçersiz komutlar gönderirse, bu komutlar sessizce reddedilir, yetkili kullanıcıların işlemlerine zarar verilmez.
+
+***Olay Abonesi (Event Subscriber) Sorgu Modelini Günceller***
+
+Özel bir subscriber, command model tarafından yayımlanan Domain Event'leri almak üzere kaydolur. Bu abone, Domain Event'i kullanarak sorgu modelini günceller ve komut modelindeki en güncel değişiklikleri yansıtmasını sağlar. Bu, ***her olayın sorgu modelinde doğru durumu oluşturmak için gerekli tüm verileri içerecek kadar zengin olması gerektiği*** anlamına gelir.
+
+***Güncellemeler Senkron mu, Asenkron mu Olmalı?*** Bu sorunun yanıtı, sistemin normal yüküne ve sorgu modelinin hangi veritabanında saklandığına bağlıdır. Veri tutarlılığı kısıtlamaları ve performans gereksinimleri de bu kararı etkileyen faktörlerdir.
+
+- **Senkron Güncelleme:** Eğer sorgu modeli ve komut modeli *aynı* veritabanını (veya şemayı) paylaşıyorsa* güncellemeler genellikle aynı transaction içinde yapılır. Bu sayede tam tutarlılık (strong consistency) sağlanır.
+    -   <ins>*Avantaj:*</ins> Veriler her zaman tamamen tutarlı olur.
+    -   <ins>*Dezavantaj:*</ins> Birden fazla tablo güncelleneceği için daha fazla işlem süresi gerektirir. Eğer sistemin hizmet seviyesi anlaşması (SLA) buna uygun değilse, bu yöntem performans açısından yeterli olmayabilir.
+
+- **Asenkron Güncelleme:** Eğer sistem genellikle yoğun yük altında çalışıyorsa ve sorgu modelinin güncellenmesi uzun sürüyorsa, asenkron güncelleme daha iyi bir seçenek olabilir.
+    -   <ins>*Avantaj:*</ins> Komut modelinin performansını etkilemeden çalışabilir.
+    - <ins>*Dezavantaj:*</ins> Eventual consistency problemi ortaya çıkabilir. Kullanıcı arayüzü, komut modelindeki en son değişiklikleri hemen yansıtmayabilir. Güncellemeler arasında öngörülemeyen gecikmeler olabilir.
+        
+Yeni Bir Kullanıcı Arayüzü Görünümü Oluşturulduğunda Ne Olur? Yeni bir kullanıcı arayüzü görünümü oluşturulduğunda, ilgili verinin de oluşturulması gerekir. Bunun için şu yöntemler kullanılabilir:
+
+1. **Event Sourcing) Kullanılıyorsa:** Eğer command model *Event Sourcing* kullanıyorsa veya geçmiş tüm olayları tarihi sırasına uygun olacak şekilde içeren Event Store varsa, geçmiş olaylar tekrar yürütülerek (replay) güncellemeler üretilebilir.  Ancak doğru türde olaylar önceden sistemde tanımlı olmalıdır. Eğer yoksa, veriler ancak sistem gelecekte komutlar aldıkça doldurulabilir.
+        
+2. **ORM Kullanılıyorsa:** Eğer command model bir *ORM* ile saklanıyorsa, komut modelindeki veri kullanılarak yeni sorgu modeli tablosu doldurulabilir. Bunun için genellikle veri ambarı (data warehouse) oluşturma teknikleri kullanılır. Örneğin, ETL (Extract, Transform, Load - Çıkar, Dönüştür, Yükle) yöntemi ile veriler komut modeli deposundan çıkarılır. Kullanıcı arayüzünün ihtiyacına göre dönüştürülür. Sorgu modeli deposuna yüklenir.
+
+### Eventually Consistent Bir Sorgu Modeli ile Başa Çıkmak
+
+Eğer query model eventually consistent olacak şekilde tasarlandıysa—yani sorgu modeli güncellemeleri komut modeli deposuna yapılan yazma işlemlerinden sonra asenkron olarak gerçekleştiriliyorsa—kullanıcı arayüzünde bazı tutarsızlıklarla karşılaşılabilir. Örneğin, bir kullanıcı bir komut gönderdiğinde, bir sonraki kullanıcı arayüzü görünümü, sorgu modelinden gelen tam güncellenmiş ve tutarlı veriyi gösterecek mi? Bu, sistem yükü ve diğer faktörlere bağlı olabilir. Ancak en kötü senaryoya göre tasarım yapmak daha güvenlidir, yani kullanıcı arayüzünün hiçbir zaman tam olarak tutarlı olmayacağını varsaymalıyız.
+
+*Bir seçenek*, kullanıcı arayüzünü geçici olarak, az önce çalıştırılan komutun parametreleriyle güncellenmiş veriyi gösterecek şekilde tasarlamaktı.   Bu bir nevi hileli bir yöntem gibi görünse de, kullanıcının sorgu modelinde eninde sonunda yansıyacak olan güncellemeleri hemen görmesini sağlar.  Bu, özellikle komut başarıyla işlendiğinde kullanıcının eski verileri görmesini önlemek açısından önemli olabilir.
+
+Peki ya bu yöntem belirli bir kullanıcı arayüzü için pratik değilse? Hatta, tek bir kullanıcının bir komut çalıştırdığı, ancak aynı veriyi görüntüleyen diğer kullanıcıların eski verileri görmeye devam ettiği senaryolar da vardır. Bu sorunu nasıl çözebiliriz?
+
+*[Dahan, CQRS]’in önerdiği bir teknik*, kullanıcı arayüzünde her zaman sorgu modelinden gelen verinin tarih ve saatini açıkça göstermektir. Bunu yapmak için, sorgu modelindeki her kaydın son güncelleme zaman damgasını içermesi gerekir. Bu, genellikle veritabanı tetikleyicileri (triggers) ile kolayca desteklenebilecek basit bir adımdır. Bu yöntem sayesinde kullanıcı, görüntülediği verinin ne kadar eski olduğunu anlayabilir. Eğer veri çok eski görünüyorsa, kullanıcı daha güncel veriyi talep etme seçeneğine sahip olur. Tabii ki bu yaklaşım bazıları tarafından etkili bir çözüm olarak övülürken, bazıları tarafından geçici ve yapay bir yöntem olarak eleştirilmiştir. Bu yüzden, bu yöntemi sistemimizde uygulamadan önce kullanıcı kabul testleri yapmak iyi bir fikir olabilir.
+
+Bazı durumlarda, verinin senkronizasyonundaki gecikme aslında kritik bir sorun olmayabilir.  
+Bunun yerine, şu yöntemlerle çözülebilir:
+
+- Comet (Ajax Push) veya benzeri gecikmeli güncelleme teknikleri
+    
+- Observer tasarım deseni [Gamma et al.] veya Dağıtık Önbellek/Grid (Distributed Cache/Grid) tabanlı olay abonelikleri (Örneğin: Coherence, GemFire)
+    
+- Kullanıcıyı işlemin kabul edildiği ve bir süre işlem süresi gerektirdiği konusunda bilgilendirme
+
+Özetle, sonradan tutarlılık gecikmesinin gerçekten bir sorun olup olmadığını dikkatlice değerlendirmek gerekir. Eğer bir problem oluşturuyorsa, çevresel faktörlere en uygun çözüm belirlenmelidir.
+
+Her tasarım modeli gibi CQRS de bazı çelişkili dinamikleri beraberinde getirir. Bu nedenle, seçim yaparken dikkatli davranmalı ve bilinçli kararlar vermeliyiz. Özellikle, bir kullanıcı arayüzü aşırı karmaşık değilse veya tek bir görünümde birden fazla Aggregate ile düzenli olarak etkileşime girmiyorsa, CQRS modeli gereksiz karmaşıklık (accidental complexity) yaratabilir. Ancak CQRS, eğer göz ardı edilirse yüksek ihtimalle sistem başarısızlığına yol açabilecek bir riski ortadan kaldırıyorsa, doğru bir tercihtir.
+
+*** 191. sayfa
