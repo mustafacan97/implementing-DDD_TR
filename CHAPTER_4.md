@@ -797,4 +797,85 @@ Hangi domain’de çalışıldığına bağlı olarak, bu olayların ele alınma
     
 Alan Olayları, sadece teknik bildirimler değildir. Gerçek iş süreci aktivitelerini temsil ederler ve alan genelinde (domain-wide) olaylara abone olan diğer sistemlerin bu bilgileri almasını sağlarlar. Ayrıca, bu olaylar benzersiz bir kimlik içerir, ilgili tüm bilgileri taşır ve bağlamı net bir şekilde açıklayacak kadar detay barındırır. Bu senkron ve adım adım işleyen model, aynı anda birden fazla işlemi gerçekleştirecek şekilde de genişletilebilir.
 
-*** 196. sayfa
+### Uzun Süreli İşlemler, diğer adıyla Sagas
+
+Yapay Pipes and Filters örneği, başka bir Olay Tabanlı, dağıtık, paralel işleme modelini göstermek için genişletilebilir: Uzun Süreli İşlemler. Bir **Long-Runnig Process**, bazen **Saga** olarak adlandırılır, ancak arka planınıza göre bu isim, halihazırda var olan bir desenle çakışabilir. Sagas'ın erken bir açıklaması, [Garcia-Molina & Salem] tarafından sunulmuştur. Karışıklığı ve belirsizliği önlemeye çalışarak, ben **Long-Running Process** terimini kullanmayı tercih ettim ve bazen **Process** adı altında kısaltmalar kullanıyorum.
+
+Önceki örneği genişleterek, yalnızca bir yeni Filter olan `TotalPhoneNumbersCounter` ekleyerek paralel pipelines oluşturabiliriz. Bu yeni Filter, `AllPhoneNumbersListed` olayını `PhoneNumberFinder` ile sanal olarak paralel alır. Yeni Filter, mevcut tüm kişileri sayma gibi çok basit bir amaca sahiptir. Bu sefer, `PhoneNumberExecutive`, Long-Running Process'i başlatır ve tamamlanana kadar izler. Yöneticinin `PhoneNumbersPublisher`'ı yeniden kullanıp kullanmaması önemli değildir, ancak burada yeni olan şey, yöneticinin bir **Application Service** veya **Command Handler** olarak uygulanmış olmasıdır. Yöneticinin, Uzun Süreli İşlem'in ilerlemesini izleyebilmesi ve tamamlandığında ne yapılması gerektiğini anlayabilmesidir. Örnek Uzun Süreli İşlem'i adım adım geçerken Şekil 4.9'u referans alabilirsiniz.
+
+![Figure 4.9](./images/chapter4/figure-4-9.png)
+
+**Figure 4.9:** Tek bir Uzun Çalışan Süreç yöneticisi paralel işlemeyi başlatır ve tamamlanana kadar izler. Daha geniş oklar, iki Filtre aynı Olayı aldığında paralelliğin nerede başladığını gösterir.
+
+---
+
+> ***Uzun Soluklu Bir Süreci Tasarlamanın Farklı Yolları***
+>
+>İşte bir Long-Runnig Process tasarlamak için üç yaklaşım, ancak bunlardan daha fazla seçenek de olabilir:
+>
+> • <ins>İşlemi bir bileşik görev olarak tasarlayın</ins>, bu görev bir yönetici bileşeni tarafından izlenir ve görev adımlarının ve tamamlanmasının bir kalıcı nesne kullanılarak kaydedilmesi sağlanır. Bu, burada en detaylı şekilde tartışılan yaklaşımdır.
+>
+> • <ins>İşlemi, bir dizi partner Aggregate olarak tasarlayın</ins>; bu Aggregate'ler bir dizi etkinlikte işbirliği yapar. Bir veya daha fazla Aggregate örneği yönetici olarak hareket eder ve işlemin genel durumunu korur. Bu, Amazon'dan Pat Helland tarafından önerilen yaklaşımdır. [Helland].
+>
+> • <ins>Durumsuz bir işlem tasarımı yapın</ins>, yani her mesaj işleyici bileşeni, aldığı olay taşıyan mesajı bir sonraki mesajı gönderirken daha fazla görev ilerleme bilgisiyle zenginleştirmelidir. İşlemin genel durumu yalnızca her mesajla işbirlikçiden işbirlikçiye gönderilen mesajın içinde korunur.
+
+---
+
+Başlangıçtaki Olay şimdi iki bileşen tarafından abone olunduğundan, her iki Filtre de neredeyse aynı anda aynı Olayı alır. İlk Filtre, her zamanki gibi, belirli 303 metin desenini eşleştirir. Yeni Filtre ise yalnızca tüm satırları sayar ve tamamladığında `AllPhoneNumbersCounted` adlı Olayı gönderir. Bu Olay, toplam iletişim sayısını içerir. Örneğin, toplam 15 telefon numarası varsa, Olayın count özelliği 15 olarak ayarlanır.
+
+Şimdi, `PhoneNumberExecutive`'nin sorumluluğu, her ikisi de `MatchedPhoneNumbersCounted` ve `AllPhoneNumbersCounted` Olaylarına abone olmaktır. Paralel işleme, bu iki Domain Olayı alındığında tamamlanmış sayılmaz. Tamamlama gerçekleştiğinde, paralel işlemenin sonuçları birleştirilir. Yönetici şimdi şu çıktıyı kaydeder:
+`3 of 15 phone numbers matched on July 15, 2012 at 11:27 PM`
+
+Kayıt çıktısı, önceki eşleşme, tarih ve saat bilgisinin yanı sıra toplam telefon numarası sayısıyla da zenginleştirilmiştir. Gerçekleştirilen görevler oldukça basit olsa da, paralel olarak yapılmışlardır. Ve eğer abonelerden bazıları farklı hesaplama düğümlerine dağıtılmışsa, paralel işleme aynı zamanda dağıtılmıştır.
+
+Ancak, bu Uzun Süreli İşlemde bir problem vardır. `PhoneNumberExecutive`, şu anda belirli ve karşılık gelen paralel süreçlerle ilişkili iki tamamlanma Domain Olayı alıp almadığını bilmez. Birçok böyle işlem paralel olarak başlatıldıysa ve her biri için tamamlanma Olayları sırasız olarak alındıysa, yönetici hangi paralel işlemin sona erdiğini nasıl bilecektir? Bizim yapay örneğimizde, uyuşmayan olaylarla yapılan logging felakete yol açmaz. Ancak kurumsal iş alanlarıyla uğraşırken, yanlış hizalanmış bir Uzun Süreli İşlem felakete neden olabilir.
+
+Bu sorunlu durumu çözmenin ilk adımı, her ilişkili Domain Olayı tarafından taşınan benzersiz bir işlem kimliği atamaktır. Bu, Uzun Süreli İşlemi başlatan orijinal Domain Olayına atanan kimlik ile aynı kimlik olabilir (örneğin, `AllPhoneNumbersListed`). Ayrıca, işlem için özel olarak tahsis edilmiş evrensel olarak benzersiz bir tanımlayıcı (UUID) kullanılabilir. `PhoneNumberExecutive`, artık yalnızca eşit kimliklere sahip tamamlanma Olaylarını aldıktan sonra günlük yazacaktır. Ancak, yöneticinin tüm tamamlanma Olayları alınana kadar beklemesi beklenemez. O da bir Olay abonesidir ve her teslimatın alınması ve işlenmesiyle gelip gider.
+
+---
+
+> ***Yönetici ve İzleyici?***
+> 
+> Bazıları, executive ve tracker kavramlarını tek bir nesnede—bir Aggregate—birleştirmenin en basit yaklaşım olduğunu düşünüyor. Böyle bir Aggregate'ı, genel sürecin sadece bir kısmını doğal olarak izleyen bir domain modelinin parçası olarak uygulamak, özgürleştirici bir teknik olabilir. Bunun nedeni, ayrıca var olması gereken Aggregates'a ek olarak ayrı bir tracker geliştirmenin gerekmemesidir. Aslında, en temel Long-Runnig Process en iyi bu şekilde uygulanır.
+>
+> Hexagonal Architecture'ta, Port-Adapter mesaj işleyicisi basitçe bir Application Service (veya Command Handler) yönlendirir, bu servis hedef Aggregate'ı yükler ve uygun komut metoduna delegasyon yapar. Çünkü Aggregate, dönüşte bir Domain Event tetikleyecektir ve bu Olay, Aggregate'ın sürecindeki rolünü tamamladığının bir göstergesi olarak yayınlanacaktır.
+>
+> Bu yaklaşım, Pat Helland'ın önerdiği **partner activities** (ortak faaliyetler) yaklaşımını yakından takip eder ve bu, "Uzun Süreli İşlemi Tasarlamanın Farklı Yolları" başlıklı yan metinde açıklanan ikinci yaklaşımdır. Ancak ideal olarak, ayrı bir **executive** ve **tracker** tartışmak, genel tekniği öğretmek için daha etkili bir yol ve öğrenmek için daha sezgisel bir yaklaşımdır.
+
+---
+
+![Figure 4.10](./images/chapter4/figure-4-10.png)
+
+**Figure 4.10:** `PhoneNumberStateTracker`, ilerlemeyi izlemek için bir Uzun Süreli İşlem durum nesnesi olarak hizmet eder. İzleyici bir Aggregate olarak uygulanır.
+
+Gerçek bir alanda, her bir **Process executive** örneği, tamamlanmasını izlemek için yeni bir Aggregate benzeri durum nesnesi oluşturur. Durum nesnesi, **Process** başladığında yaratılır ve her ilgili Domain Event'in taşıması gereken aynı benzersiz kimlik ile ilişkilendirilir. Ayrıca, Process'in ne zaman başladığını gösteren bir zaman damgası taşıması da faydalı olabilir (bu konu, bölümün ilerleyen kısımlarında tartışılacaktır). Process durum izleyici nesnesi, Şekil 4.10'da gösterilmiştir.
+
+Paralel işleme sürecindeki her bir pipeline tamamlandıkça, **executive** karşılık gelen tamamlanma Event'ini alır. Executive, alınan Event'te taşınan benzersiz Process kimliğini eşleştirerek durum izleme örneğini alır ve tamamlanan adımı temsil eden bir özelliği ayarlar.
+
+Process durum örneği genellikle `isCompleted()` gibi bir metoda sahiptir. Her adım tamamlandıkça ve bu adımlar durum izleyicide kaydedildikçe, executive `isCompleted()` metodunu kontrol eder. Bu metod, tüm gerekli paralel süreçlerin tamamlanıp tamamlanmadığını kontrol eder. Metod `true` döndüğünde, executive iş gereksinimleri doğrultusunda bir final Domain Event yayınlama seçeneğine sahip olabilir. Bu Event, tamamlanan Process birden fazla paralel sürecin bir dalıysa, örneğin, iş gereksinimleri doğrultusunda gerekebilir.
+
+Verilen bir mesajlaşma mekanizması, her Event'in tekil teslimatını garanti eden özelliklere sahip olmayabilir. Eğer mesajlaşma mekanizması, bir Domain Event mesajını iki veya daha fazla kez teslim etme olasılığı taşıyorsa, Process durum nesnesi bu durumu de-duplicate (yinelemeleri ortadan kaldırma) etmek için kullanılabilir. Bu, mesajlaşma mekanizmasından özel özellikler talep eder mi? Bu durumun nasıl ele alınabileceğini, özel özellikler olmadan nasıl çözülebileceğini düşünün.
+
+Her tamamlanma Event'i alındığında, executive, o spesifik Event için mevcut bir tamamlanma kaydını kontrol etmek üzere durum nesnesine başvurur. Eğer tamamlanma göstergesi zaten ayarlanmışsa, Event bir kopya olarak kabul edilir ve yok sayılır, ancak yine de onaylanır. Diğer bir seçenek, durum nesnesinin idempotent olarak tasarlanmasıdır. Bu durumda, eğer executive'e kopya mesajlar gelirse, durum nesnesi kopya olayı eşit şekilde absorbe eder. Durum izleyicisinin yalnızca ikinci seçenekte idempotent olarak tasarlanmış olmasıyla birlikte, her iki yaklaşım da idempotent mesajlaşmayı destekler. Event'in tekrarlanmasını (de-duplication) daha ayrıntılı olarak incelemek için Domain Events (8) bölümüne bakın.
+
+Bazı Process tamamlanma izleme işlemleri zaman duyarlı olabilir. Process zaman aşımı durumlarını pasif veya aktif olarak ele alabiliriz. Process durum izleyicisinin başlangıç zamanını tutabildiğini hatırlayın. Buna ek olarak, toplam izin verilen süre sabiti (veya yapılandırma) değeri eklenerek executive, zaman duyarlı Long-Running Processes'i yönetebilir.
+
+Pasif bir zaman aşımı kontrolü, her paralel işleme tamamlanma Event'i executive tarafından alındığında yapılır. Executive, durum izleyicisini alır ve zaman aşımının olup olmadığını sorar. `hasTimedOut()` gibi bir metod bu amaç için kullanılabilir. Pasif zaman aşımı kontrolü, izin verilen süre eşiğinin aşıldığını gösterirse, Process durum izleyicisi terkedilmiş olarak işaretlenebilir. Ayrıca, bununla ilgili bir başarısızlık Domain Event'i yayınlanabilir. Ancak, pasif zaman aşımı kontrolünün bir dezavantajı, Process'in, bir veya birden fazla tamamlanma Event'inin herhangi bir sebepten dolayı executive tarafından hiç alınmaması durumunda, eşiğinden çok sonra aktif kalabilmesidir. Daha büyük bir paralel süreç bu sürecin belirli bir başarı veya başarısızlığına bağlıysa bu kabul edilemez olabilir.
+
+Aktif bir Process zaman aşımı kontrolü, dışsal bir zamanlayıcı kullanılarak yönetilebilir. Örneğin, bir `JMX TimerMBean` örneği, Java ile yönetilen bir zamanlayıcı elde etmenin bir yoludur. Zamanlayıcı, Process başladığı anda maksimum zaman aşımı eşiği için ayarlanır. Zamanlayıcı tetiklendiğinde, dinleyici Process durum izleyicisine erişir. Eğer durum zaten tamamlanmamışsa (zamanlayıcı, asenkron bir Event tamamlanmadan önce tetiklenmişse her zaman kontrol edilir), o zaman terkedilmiş olarak işaretlenir ve buna karşılık gelen bir başarısızlık Event'i yayınlanır. Eğer durum izleyicisi zamanlayıcı tetiklenmeden önce tamamlandıysa, zamanlayıcı sonlandırılabilir. Aktif zaman aşımı kontrolü'nün bir dezavantajı, daha fazla sistem kaynağı gerektirmesidir; bu, yoğun trafik ortamlarında sisteme yük getirebilir. Ayrıca, zamanlayıcı ve gelen tamamlanma Event'i arasında bir yarış durumu olması, yanlış bir şekilde başarısızlık durumu oluşturabilir.
+
+Uzun Süreli Süreçler genellikle dağıtık paralel işleme ile ilişkilendirilir, ancak dağıtık işlemlerle bir ilgisi yoktur. Bunlar, eventually consistency anlayışını benimsemeyi gerektirir. Bir Uzun Süreli Süreç tasarlama çabalarına, altyapı veya görevlerin kendisi başarısız olduğunda iyi tasarlanmış hata kurtarma süreçlerinin önemli olduğu beklentisiyle, soğukkanlı bir şekilde yaklaşmalıyız. Bir Uzun Süreli Süreç'in tek bir örneğinde yer alan her sistem, executive nihai tamamlanma bildirimini alana kadar tüm diğer katılımcılardan tutarsız kabul edilmelidir. Evet, bazı Uzun Süreli Süreçler sadece kısmi tamamlanmayla başarılı olabilir veya tam tamamlanmadan önce birkaç gün bekleyebilir. Ancak, eğer süreç başarısız olur ve katılımcı sistemler tutarsız durumlar bırakırsa, telafi gerekli olabilir. Eğer telafi zorunluysa, bu, başarı yolunun tasarımından daha karmaşık hale gelebilir. Belki de iş prosedürleri, hataları kabul edebilir ve yerine iş akışı çözümleri sunabilir.
+
+----------
+
+> SaaSOvation takımları, Bounded Contexts arasındaki mesajlaşmayı ve Domain Events'i yayınlamayı yönetmek için Event-Driven Architecture kullanıyor ve ProjectOvation takımı, Product örneklerine atanmış Discussions'ın oluşturulmasını yönetmek için en basit Uzun Süreli Süreç türünü kullanacak. Genel stil, dış mesajlaşmayı ve Domain Events'in şirket çapında yayınlanmasını yönetmek için Hexagonal mimarisini kullanmaktadır.
+
+----------
+
+Gözden kaçırılmaması gereken bir diğer önemli nokta, Uzun Süreli Süreç yöneticisinin paralel işlemleri başlatmak için bir, iki veya daha fazla Event yayınlayabilmesidir. Ayrıca, başlatıcı Event veya Event'lere abone olan sadece iki değil, üç veya daha fazla abone olabilir. Diğer bir deyişle, bir Uzun Süreli Süreç, aynı anda birden fazla iş süreci etkinliğini tetikleyebilir. Bu nedenle, bizim yapay örneğimiz, sadece Uzun Süreli Süreç'in temel kavramlarını iletmek amacıyla karmaşıklık açısından sınırlıdır.
+
+Uzun Süreli Süreçler, entegrasyonun yüksek gecikme süresine sahip olduğu eski sistemlerle entegrasyon gerektiğinde sıklıkla faydalıdır. Gecikme ve eski sistemler ana endişe olmasa bile, dağılmış yapıyı ve paralelliği zarif bir şekilde kullanmak, yüksek ölçeklenebilirlik ve yüksek erişilebilirlik sağlayabilen iş sistemlerine yol açabilir.
+
+Bazı mesajlaşma mekanizmaları, Uzun Süreli Süreçler için yerleşik destek sağlar, bu da benimsemeyi büyük ölçüde hızlandırabilir. Bunlardan biri **NServiceBus**'tır; bu sistem, Sagas olarak adlandırdığı özel bir destek sağlar. Bir diğer Saga uygulaması da **MassTransit** ile sağlanmaktadır.
+
+*** 203. sayfa
