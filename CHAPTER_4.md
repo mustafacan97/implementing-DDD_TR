@@ -679,4 +679,122 @@ Bunun yerine, şu yöntemlerle çözülebilir:
 
 Her tasarım modeli gibi CQRS de bazı çelişkili dinamikleri beraberinde getirir. Bu nedenle, seçim yaparken dikkatli davranmalı ve bilinçli kararlar vermeliyiz. Özellikle, bir kullanıcı arayüzü aşırı karmaşık değilse veya tek bir görünümde birden fazla Aggregate ile düzenli olarak etkileşime girmiyorsa, CQRS modeli gereksiz karmaşıklık (accidental complexity) yaratabilir. Ancak CQRS, eğer göz ardı edilirse yüksek ihtimalle sistem başarısızlığına yol açabilecek bir riski ortadan kaldırıyorsa, doğru bir tercihtir.
 
-*** 191. sayfa
+## Olay Tabanlı Mimari (Event-Driven Architecture)
+
+> Olay Tabanlı Mimari (EDA), yazılım mimarisinde olayların üretilmesini, algılanmasını, tüketilmesini ve olaylara tepki verilmesini teşvik eden bir yaklaşımdır. [Wikipedia, EDA]
+
+Altıgen Mimari (Hexagonal Architecture), bir sistemin gelen ve giden mesajlar aracılığıyla EDA içinde nasıl yer aldığını temsil edebilir (Şekil 4.4). Bir EDA'nın mutlaka Altıgen Mimari kullanması gerekmez, ancak bu yaklaşımı kavramsal olarak sunmak için uygun bir yöntemdir. Eğer sıfırdan (greenfield) bir proje geliştiriliyorsa, Altıgen Mimari'yi genel stil olarak kullanmayı düşünmek mantıklı olabilir.
+
+Şekil 4.4’ü incelediğimizde, üçgen şeklindeki istemci ve buna karşılık gelen üçgen şeklindeki çıktı mekanizması, Sınırlandırılmış Bağlam (Bounded Context) içinde kullanılan mesajlaşma mekanizmasını temsil eder.
+
+- **Giriş olayları (input events)**, diğer üç istemcinin kullandığı giriş Portu'ndan ayrı bir Port üzerinden sisteme girer.
+    
+-   **Çıkış olayları (output events)** da farklı bir Port üzerinden sistemden çıkar.
+    
+-   Daha önce önerildiği gibi, bu ayrı Portlar, mesaj taşıma işlemi için **AMQP protokolünü** (örn: RabbitMQ) kullanabilir.
+    
+-   Diğer istemcilerin çoğu HTTP kullanırken, olaylar AMQP üzerinden taşınabilir.
+    
+-   Hangi mesajlaşma mekanizması kullanılırsa kullanılsın, olayların sisteme giriş ve çıkışı üçgenler aracılığıyla sembolik olarak temsil edilir.
+    
+Altıgen içine çeşitli olay türleri girip çıkabilir. Ancak bizim odak noktamız özellikle Alan (Domain) Olaylarıdır. Bir uygulama ayrıca sistem olaylarına, kurumsal olaylara veya diğer olay türlerine de abone olabilir. Bu olaylar; sistem sağlığı ve izleme, loglama, dinamik kaynak tahsisi gibi konularla ilgili olabilir. Ancak bizim dikkatimizi çeken olaylar, modelleme açısından önemli olan Domain Olaylarıdır.
+
+Şekil 4.7, Altıgen Mimari görünümünün, EDA'ya uygun çalışan birden fazla sistemi temsil edecek şekilde çoğaltılabileceğini gösterir. Bu şu anlama gelir, her sistem Altıgen Mimari kullanmak zorunda değildir. Şekil sadece, eğer tüm sistemler Altıgen olarak tasarlanırsa, Olay Tabanlı bir yaklaşımın nasıl desteklenebileceğini göstermektedir. *Eğer farklı bir mimari kullanılıyorsa, Altıgenler yerine Katmanlı Mimari (Layered Architecture) veya başka bir stil tercih edilebilir.
+
+Bu yapıda, bir sistemin çıkış Portu'ndan yayınlanan Domain Olayları, diğer sistemlerin giriş Portu'na teslim edilir. Alıcı sistemler, gelen Domain Olayları'nın kendi bağlamlarında (Bounded Context) bir anlam taşıyıp taşımadığını belirler. Eğer ilgili bağlamda anlamlı bir olay ise, olayın özellikleri, uygulamanın API’sine uyarlanır ve bir işlem başlatılır. Çalıştırılan komut işlemi, ilgili alan modeline (domain model) uygun şekilde yansıtılır.
+
+![Figure 4.7](./images/chapter4/figure-4-7.png)
+
+**Figure 4.7:** Kapsayıcı bir Altıgen stile sahip Event-Driven Architecture kullanan üç sistem. EDA stili, sistemlerin mesajlaşma mekanizmasının kendisine ve abone oldukları Olay türlerine olan bağımlılığı dışında her şeyi ayrıştırır.
+
+Bazı durumlarda, belirli bir Domain Olayı, çok aşamalı (multitask) bir sürecin yalnızca bir parçası olabilir. Tüm beklenen Domain Olayları gelene kadar süreç tamamlanmış sayılmaz. Bu noktada şu sorular ortaya çıkar:
+
+- Bu süreç nasıl başlatılır?
+- Şirket içindeki sistemlere nasıl dağıtılır?
+- Sürecin ilerleyişi nasıl takip edilir ve tamamlanması nasıl sağlanır?
+
+Bu sorular, uzun süren işlemler (long-running processes) ile ilgili bölümde ele alınacaktır. Ancak öncelikle bazı temel konuların açıklığa kavuşturulması gerekir. Mesaj tabanlı sistemler, genellikle **"Pipes and Filters" (Boru Hatları ve Filtreler) tasarım modelini** yansıtır.
+
+### Boru Hatları ve Filtreler (Pipes and Filters)
+
+En basit haliyle, Boru Hatları ve Filtreler, kabuk (shell) veya konsol komut satırında kullanılabilir:
+
+```bash
+$ cat phone_numbers.txt | grep 303 | wc -l
+3
+$
+```
+
+Burada, Linux komut satırı kullanılarak, kişisel bilgi yöneticisindeki (`phone_numbers.txt`) Colorado merkezli telefon numaralarına sahip kaç kişi olduğu bulunmaya çalışılıyor. Bu yöntemin çok güvenilir bir yaklaşım olmadığı kabul edilse de, Boru Hatları ve Filtrelerin (Pipes and Filters) nasıl çalıştığını göstermektedir:
+
+1.  `cat` komutu, `phone_numbers.txt` dosyasının içeriğini standart çıktı akışına (standard output stream) yazdırır. Normalde, bu akış konsola bağlıdır. Ancak `|` sembolü kullanıldığında, çıktı bir sonraki komutun girişine yönlendirilir.
+    
+2.  Ardından, `grep` komutu, girişini standart giriş akışından (standard input stream) okur. Bu giriş, `cat` komutunun çıktısıdır. `grep` komutuna verilen argüman, `303` içeren satırları bulmasını söyler. Eşleşen her satırı standart çıktı akışına yazar. `cat` komutunda olduğu gibi, grep`in çıkışı da bir sonraki komutun girişine yönlendirilir.
+    
+3.  Son olarak, `wc` komutu, standart girişini, grep'in standart çıktısından alır. `wc` komutuna verilen `-l` argümanı, okunan satır sayısını saymasını söyler. Sonuç olarak`wc`,` grep` tarafından döndürülen satırların sayısını (bu örnekte 3) ekrana yazdırır. Bu kez çıktı başka bir komuta yönlendirilmediği için doğrudan konsola yazdırılır.
+
+Bu, bir Windows konsolu kullanılarak, ancak daha az pipe kullanılarak yapılabilir:
+
+```bash
+C:\fancy_pim> type phone_numbers.txt | find /c "303"
+3
+C:\fancy_pim>
+```
+
+Her bir yardımcı programın (utility) nasıl çalıştığını düşünelim. Her biri bir veri kümesi alır, işler ve farklı bir veri kümesi üretir. Çıktı olarak elde edilen veri kümesi, giriş verisinden farklıdır, çünkü her yardımcı program bir Filtre (Filter) görevi görür. Filtreleme sürecinin sonunda, çıktı tamamen girişten farklı hale gelir. Başlangıçta, giriş tek tek satırlardan oluşan bir metin dosyasıyken, işlem sonucunda yalnızca "3" rakamı elde edilmiştir.
+
+Bu basit prensipleri kullanarak, Olay Tabanlı Mimariye (Event-Driven Architecture - EDA) nasıl uygulayabiliriz? Aslında burada bazı önemli benzerlikler bulunmaktadır. Aşağıdaki açıklamalar, Pipes and Filters mesajlaşma desenine dayanmaktadır [Hohpe, Woolf]. Ancak şunu unutmamak gerekir ki, mesaj tabanlı Pipes and Filters yaklaşımı, komut satırı versiyonuyla birebir aynı değildir ve öyle olması da amaçlanmamaktadır. Örneğin, EDA’de bir Filtre’nin mutlaka bir şeyi filtrelemesi gerekmez. EDA’deki bir Filtre, mesaj verisini değiştirmeden bazı işlemler gerçekleştirebilir. Ancak, EDA’de Pipes and Filters yaklaşımı, komut satırı versiyonuna yeterince benzediğinden, önceki örnek bu konunun temelini anlamamızda yardımcı olmuştur. Eğer ileri düzey bir okuyucuysanız, aşağıdaki bilgileri kendi süzgecinizden geçirebilirsiniz!
+
+Tablo 4.2**, **mesaj tabanlı Pipes and Filters sürecinin temel özelliklerini** göstermektedir:
+
+
+*Tablo 4.2: Mesaj Tabanlı Pipes and Filters Sürecinin Temel Özellikleri*
+| **Özellik**                                  | **Açıklama**  |
+|----------------------------------------------|--------------|
+| Pipes (Boru Hatları) mesaj kanallarıdır | Filtreler, gelen mesajları bir giriş Pipe (mesaj kanalı) üzerinden alır ve çıkış Pipe üzerinden gönderir. Pipe, aslında bir mesaj kanalıdır. |
+| Portlar, Filtreleri Pipe’lara bağlar | Filtreler, giriş ve çıkış Pipe’lara bir Port aracılığıyla bağlanır. Portlar, Hexagonal Mimari’yi (Ports and Adapters) genel bir mimari stil olarak uygun hale getirir. |
+| Filtreler, işlemcidir ancak her zaman süzme yapmaz | Filtreler, mesajları doğrudan filtrelemek zorunda olmadan bazı işlemler gerçekleştirebilir. |
+| Her Filtre işlemcisi ayrı bir bileşendir | Her bir Filtre işlemcisi bağımsız bir bileşendir ve bileşenlerin uygun şekilde tasarlanması ile doğru bileşen granülaritesi sağlanır. |
+| Gevşek bağlı (Loosely Coupled) | Her Filtre işlemcisi, diğerlerinden bağımsız olarak sürece dahil edilir. Filtre işlemcilerinin bileşimi, yapılandırma ile belirlenebilir. |
+| Değiştirilebilir (Interchangeable) | Bir işlemcinin mesaj alma sırası, kullanım senaryosuna göre yeniden düzenlenebilir. Bu da yapılandırılmış bileşimin esnekliğini artırır. |
+| Filtreler birden fazla Pipe ile çalışabilir | Komut satırı filtreleri yalnızca bir Pipe üzerinden okuma ve yazma yaparken, mesajlaşma filtreleri birden fazla Pipe üzerinden okuma ve/veya yazma yapabilir. Bu da paralel veya eşzamanlı işlem yapmayı mümkün kılar. |
+| Aynı türdeki Filtreler paralel olarak kullanılabilir | En yoğun ve muhtemelen en yavaş çalışan Filtreler, işleme kapasitesini artırmak için birden fazla kez dağıtılabilir. |
+
+Şimdi, `cat`, `grep` ve `wc` (veya `type` ve `find`) gibi komut satırı yardımcı programlarını, bir Olay Tabanlı Mimari (Event-Driven Architecture) içindeki bileşenler olarak düşünseydik ne olurdu? Hatta telefon numaralarını benzer şekilde işlemek için mesaj gönderici ve alıcı bileşenler uygulasaydık? (Burada birebir bir komut satırı ikamesi oluşturmayı değil, aynı temel hedeflere sahip basit bir mesajlaşma örneği sunmayı amaçlıyorum.)
+
+Aşağıda, bir Pipes and Filters (Boru Hatları ve Filtreler) yaklaşımıyla mesajlaşmanın nasıl çalışabileceği anlatılmaktadır. Adımlar Şekil 4.8 ile gösterilmiştir:
+
+1. `PhoneNumbersPublisher` adlı bir bileşen oluşturabiliriz. Bu bileşen, `phone_numbers.txt` dosyasındaki tüm satırları okur ve içeriği bir **Event** mesajı olarak oluşturup gönderir. Bu olaya `AllPhoneNumbersListed` adı verilir. Olay gönderildiğinde işlem hattı (pipeline) başlar.
+    
+2. `PhoneNumberFinder` adlı bir mesaj işleyici bileşeni, `AllPhoneNumbersListed` olayına abone olacak şekilde yapılandırılır ve bu olayı alır. Bu bileşen, işlem hattındaki ilk Filtre olarak çalışır. 303 metin dizisini aramak üzere yapılandırılmıştır. Bu bileşen, gelen olay mesajını işler ve her satırda 303 dizisini arar. Eşleşen satırları içeren yeni bir Event oluşturur ve bu olaya `PhoneNumbersMatched` adı verilir. Olay mesajı gönderilir ve pipeline devam eder.
+    
+3. `MatchedPhoneNumberCounter` adlı message handler bileşeni, `PhoneNumbersMatched` olayına abone olacak şekilde yapılandırılır ve bu olayı alır. Bu mesaj işleyici, işlem hattındaki ikinci Filtre olarak çalışır. Tek görevi, gelen olay içindeki telefon numaralarını saymak ve sonucu yeni bir olay olarak iletmektir. Bu bileşen, toplamda üç satır içerdiğini hesaplar. Filtre, `MatchedPhoneNumbersCounted` adlı bir olay oluşturarak count (sayı) özelliğini 3 olarak ayarlar. Olay mesajı gönderilir ve işlem hattı devam eder.
+    
+4.  Son olarak, `MatchedPhoneNumbersCounted` olayına abone olan bir mesaj işleyici bileşeni bu olayı alır. Bu bileşenin adı `PhoneNumberExecutive`’dir. Tek görevi, sonucu bir dosyaya **loglamak** ve olaydaki **count (sayı)** özelliğini ve aldığı tarih/saat bilgisini yazmaktır. Bu örnekte, şu çıktıyı üretir:
+`3 telefon numarası eşleşti - 15 Temmuz 2012, 23:15`
+
+Bu işlem hattı (pipeline) böylece tamamlanmış olur.
+
+![Figure 4.7](./images/chapter4/figure-4-7.png)
+
+**Figure 4.7:** Filtrelerin işlediği Event'leri göndererek bir pipeline oluşturulur.
+
+Bu tür bir pipeline biraz esnektir. Eğer işlem hattına yeni Filtreler (Filters) eklemek istersek, her mevcut filtre için abone olunacak ve yayınlanacak yeni Olaylar (Events) oluştururuz. Temel olarak, işlem hattının sırasını dikkatlice değiştirmemiz gerekir ve bunu yapılandırma üzerinden yapabiliriz. Elbette, bu süreci komut satırındaki gibi değiştirmek*o kadar kolay değildir. Ancak, Domain Event pipeline'larını çok sık değiştirmeyiz. Bu belirli dağıtık işlem kendi başına çok faydalı olmayabilir, ancak Pipes and Filters modelinin mesaj tabanlı, Olay Tabanlı Mimari (Event-Driven Architecture) içinde nasıl çalışabileceğini gösterir.
+
+*Peki, gerçekten böyle bir sorunu çözmek için Pipes and Filters modelini kullanmayı bekler miyiz?* İdeal olarak hayır. (Eğer bu örnek size sinir bozucu geliyorsa, muhtemelen bu modeli zaten bildiğiniz içindir. Bu iyi bir şey! Ancak bu kavramları öğrenmek isteyenler için faydalı bir örnektir.) Bu örnek, sadece temel kavramları vurgulamak için oluşturulmuş yapay bir senaryodur. Gerçek bir kurumsal (enterprise) sistemde, bu model büyük bir sorunu daha küçük adımlara bölerek dağıtık işlemi daha anlaşılır ve yönetilebilir hale getirir. Aynı zamanda birden fazla sistemin yalnızca kendi uzmanlık alanlarına odaklanmasını sağlar.
+
+Gerçek bir DDD (Domain-Driven Design) senaryosunda:
+
+-  Alan Olayları (Domain Events) iş dünyası için anlamlı isimler taşır.
+    
+- 1\. Adım, Bounded Context içindeki bir Aggregate’in davranışsal sonucuna dayalı olarak bir Domain Event yayınlayabilir.
+    
+- 2\. ila 4. adımlar, ilk olayı alan ve sonrasında yeni olaylar yayınlayan bir veya daha fazla farklı Bağlamda (Context) gerçekleşebilir.
+    
+- Bu üç adım, kendi bağlamlarındaki Aggregateler’i oluşturabilir veya değiştirebilir.
+    
+Hangi domain’de çalışıldığına bağlı olarak, bu olayların ele alınma şekli farklılık gösterebilir. Ancak, Pipes and Filters modelini kullanan bir Olay Tabanlı Mimari içinde bu yaygın bir senaryodur.
+    
+Alan Olayları, sadece teknik bildirimler değildir. Gerçek iş süreci aktivitelerini temsil ederler ve alan genelinde (domain-wide) olaylara abone olan diğer sistemlerin bu bilgileri almasını sağlarlar. Ayrıca, bu olaylar benzersiz bir kimlik içerir, ilgili tüm bilgileri taşır ve bağlamı net bir şekilde açıklayacak kadar detay barındırır. Bu senkron ve adım adım işleyen model, aynı anda birden fazla işlemi gerçekleştirecek şekilde de genişletilebilir.
+
+*** 196. sayfa
