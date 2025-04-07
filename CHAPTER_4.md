@@ -1033,9 +1033,9 @@ PhoneNumberCountProcess phoneNumberCountProcess = new PhoneNumberCountProcess();
 String phoneNumberFilterQuery = "select phoneNumber from /phoneNumberRegion pnr where pnr.areaCode = '303'"; 
 
 Execution execution = FunctionService.onRegion(phoneNumberRegion)
-.withFilter(0)
-.withArgs(phoneNumberFilterQuery)
-.withCollector(new PhoneNumberCountResultCollector()); 
+								.withFilter(0)
+								.withArgs(phoneNumberFilterQuery)
+								.withCollector(new PhoneNumberCountResultCollector()); 
 
 PhoneNumberCountResultCollector resultCollector = execution.execute(phoneNumberCountProcess); 
 
