@@ -878,4 +878,185 @@ Uzun Süreli Süreçler, entegrasyonun yüksek gecikme süresine sahip olduğu e
 
 Bazı mesajlaşma mekanizmaları, Uzun Süreli Süreçler için yerleşik destek sağlar, bu da benimsemeyi büyük ölçüde hızlandırabilir. Bunlardan biri **NServiceBus**'tır; bu sistem, Sagas olarak adlandırdığı özel bir destek sağlar. Bir diğer Saga uygulaması da **MassTransit** ile sağlanmaktadır.
 
-*** 203. sayfa
+### Event Sourcing
+
+Bazen iş dünyası, alan modelindeki nesnelerde gerçekleşen değişikliklerin izlenmesini önemser. Bu değişiklik izleme ihtiyacı, farklı seviyelerde olabilir ve her seviyeye uygun çeşitli yöntemlerle desteklenebilir. Genellikle işletmeler, yalnızca bir varlığın ne zaman ve kim tarafından oluşturulduğunu ya da en son ne zaman ve kim tarafından güncellendiğini izlemeyi tercih eder. Bu, nispeten basit ve doğrudan bir değişiklik izleme yaklaşımıdır. Ancak bu, modeldeki bireysel değişiklikler hakkında herhangi bir bilgi sağlamaz.
+
+Zamanla işletmeler, daha detaylı bir değişiklik izleme isteği duymaya başlar. Bu noktada, yapılan işlemler hakkında daha fazla meta veriye ihtiyaç duyulabilir. Hatta bazı durumlarda, belirli işlemlerin ne kadar sürede tamamlandığı bile anlaşılmak istenebilir. Bu ihtiyaçlar, daha ince taneli kullanım senaryosu metriklerini tutmak için **bir denetim günlüğü (audit log)** veya **bir işlem günlüğü (journal)** tutma gerekliliğini ortaya çıkarır. Ancak bir denetim günlüğünün de bazı sınırlamaları vardır. Sistem içinde neler olduğuna dair bazı bilgiler sağlayabilir, hatta bazı hata ayıklama işlemlerine yardımcı olabilir. Ancak, belirli değişikliklerden önce ve sonra alan nesnelerinin durumunu incelemeye imkân tanımaz. Peki, değişiklik izleme sürecini daha ileri götürebilsek nasıl olurdu?
+
+Geliştiriciler olarak, hepimiz bir şekilde daha ayrıntılı değişiklik izlemesini deneyimlemişizdir. En yaygın örnek, bir kaynak kodu deposu kullanımıdır (örneğin: CVS, Subversion, Git veya Mercurial). Bu tür sürüm kontrol sistemlerinin ortak noktası, bir kaynak dosya üzerinde gerçekleşen değişiklikleri izleyebilmeleridir. Bu sistemlerin sağladığı değişiklik izleme özelliği sayesinde, bir dosyanın en ilk halinden başlayarak tüm sürümlerini sırasıyla görebilir, hatta geliştirme yaşam döngüsünün tamamını takip edebiliriz.
+
+Eğer bu konsepti tek bir Entity (Varlık) için, ardından bir Aggregate için, sonra da modeldeki tüm Aggregate’lar için uygularsak, değişiklik izleme nesnelerinin gücünü ve sistemlerimize katabileceği değeri daha iyi anlayabiliriz. Bu bakış açısıyla, herhangi bir Aggregate örneğinin nasıl oluşturulduğunu, hangi olaylar sonucu hangi operasyonlardan geçtiğini adım adım bilmek isteriz. Geçmişte yaşanan her şeyin kaydına sahip olduğumuzda, geçmişe yönelik (temporal) modelleri bile destekleyebiliriz. Bu düzeyde bir değişiklik takibi, **Event Sourcing** adı verilen bir desenin özüdür. Şekil 4.11, bu desenin üst düzey bir görünümünü sunar.
+
+![Figure 4.11](./images/chapter4/figure-4-11.png)
+
+**Figure 4.11:** Event Sourcing mekanizmasının genel çerçeveden görünümü, burada Aggregate'ler depolanan ve modelin durum değişikliklerini izlemek için kullanılan Event'ler yayınlar. Repository, Event'leri okur ve bunları Aggregate'in durumunu yeniden oluşturmak için uygular.
+
+Event Sourcing’in farklı tanımları bulunsa da, burada biraz netlik kazandırmak yerinde olur. Bu kullanımda, domain modelindeki herhangi bir Aggregate örneği üzerinde yürütülen her operasyonel komut, yürütme sonucunu tanımlayan en az bir Domain Event üretir. Her bir Event, oluş sırasına göre bir **"Event Store (Olay Deposu)** içine kaydedilir. Bir Aggregate, kendi Repository'sinden yeniden alındığında, olaylar oluş sırasına göre "geri oynatılır" (playback) ve Aggregate, olayları kendisine uygulayarak (apply) yeniden oluşturulur.
+
+Yani, en eski Event'ten başlanarak, Aggregate bu Event'i kendi durumuna uygular ve bir sonraki Event'e geçilir. Bu işlem, en son Event'e kadar devam eder. ***Tüm Event'ler sırayla uygulanıp oynatıldıktan sonra, Aggregate örneği en son komut davranışının yürütüldüğü zamandaki duruma ulaşır.***
+
+> ***Hareketli Bir Hedef mi?***
+> 
+> Event Sourcing tanımı zaman içinde bazı eleştirilerle karşılaşmış ve geliştirmelere uğramıştır; bu yazının kaleme alındığı dönemde bile tam olarak oturmuş sayılmaz. Diğer birçok öncü teknik gibi, rafine edilmesi gereken yönleri vardır. Burada anlatılanlar, DDD kullanılarak uygulanan desenin özünü yansıtır ve büyük ölçüde gelecekte de nasıl kullanılacağını ifade eder.
+
+Zaman içerisinde herhangi bir Aggregate örneğinde meydana gelen yüzlerce, binlerce, hatta milyonlarca olayın tekrar oynatılması (playback) modelin işlenmesinde ciddi gecikmelere ve işlem yüküne sebep olmaz mı? Özellikle yüksek trafikli modeller için bu kesinlikle bir sorun olurdu. Bu darboğazdan kaçınmak için **Aggregate durum anlık görüntüleri (snapshot)** kullanan bir optimizasyon uygulanabilir. Bu amaçla, arka planda bir işlem çalıştırılır ve Event Store'daki (Olay Deposu) belirli bir noktadaki olaylara kadar olan süreçte Aggregate’in bellek içi durumu alınır. Bu durum serialize edilir ve bu **snapshot**, Event Store’a kaydedilir. Bu noktadan sonra Aggregate önce en güncel snapshot kullanılarak belleğe yüklenir, ardından o snapshot’tan sonraki olaylar sırayla Aggregate’e uygulanır (playback yapılır).
+
+Snapshot’lar rastgele zamanlarda oluşturulmaz. Bunun yerine, önceden belirlenmiş sayıda yeni olay gerçekleştiğinde tetiklenir. Bu sayı, domain’e özel sezgiler veya gözlemlerle belirlenebilir. Örneğin, bir Aggregate’in geri çağrılmasının 50 ila 100 olayı aşmadığında en iyi performansı verdiği gözlemlenebilir.
+
+Event Sourcing çoğunlukla teknik bir çözüm yönünde ilerler. Domain modelleri, Event Sourcing kullanılmadan da Domain Event’ler yayınlayabilir. Ancak Event Sourcing bir kalıcılık mekanizmasıdır ve klasik ORM araçlarının yerini alır; onlardan oldukça farklı çalışır. Olaylar genellikle binary (ikili) formatta Event Store’a kaydedildiğinden, bu veriler üzerinde doğrudan sorgulama yapmak verimli değildir. Bu nedenle, Event Sourcing'e göre tasarlanmış Repositories yalnızca tek bir `get/find` fonksiyonuna sahiptir ve bu fonksiyon sadece Aggregate’in benzersiz kimliğini parametre olarak alır. Ayrıca, tasarım gereği Aggregate’ler sorgulama yöntemlerine (getter'lara) sahip değildir. Bu nedenle, sorgulama için farklı bir yaklaşım gerekir; genellikle bu da Event Sourcing ile birlikte CQRS kullanımını zorunlu kılar (önceki bölümlerde ele alınmıştı).
+
+Event Sourcing bize domain modellerini farklı bir şekilde düşünme alışkanlığı kazandırır, bu yüzden kullanımı teknik olarak gerekçelendirilmelidir. En basit haliyle, olay geçmişi sistemdeki hataların çözülmesinde büyük avantaj sağlar. Modelde bug’a yol açan her şeyin açıkça tarihçelendirilmiş olması, hata ayıklamayı kolaylaştırır. Ayrıca Event Sourcing, **çok yüksek işlem hacmine sahip domain modellerine** olanak tanır; saniyede binlerce işlemi ölçekleyebilir. Örneğin, veritabanındaki tek bir tabloya sadece ekleme yapmak (append), son derece hızlıdır. Bunun yanında, CQRS sorgu modeli **arka planda güncellendiği için**, bu veri kaynağını daha fazla örneğe çoğaltarak artan istemci yükünü desteklemek de mümkündür.
+
+Ama teknik avantajlar her zaman iş dünyasını ikna etmeye yetmez. Bu nedenle, Event Sourcing kullanımının teknik uygulaması sayesinde elde edilen bazı **işletme avantajlarını** da göz önünde bulundurmak gerekir:
+
+- **Event Store’u yeni ya da modifiye edilmiş Event’lerle yamalayarak (patch) sorunları çözmek** mümkündür. Bu işlemin bazı iş etkileri olabilir; fakat yasal olarak mümkün olan durumlarda, bu yamalar sistemin modeldeki hatalardan dolayı ciddi sorunlar yaşamasını engelleyebilir. Üstelik yamaların **yerleşik bir denetim izi (audit trail)** taşıması sayesinde, bu işlemler açık ve izlenebilir hale gelir, böylece yasal etkiler azaltılabilir.
+    
+- Patch (yamalamak) işlemine ek olarak, modelde yapılan değişiklikleri geri alma (undo) veya yeniden uygulama (redo) da mümkündür. Farklı Event kümelerini tekrar oynatarak bu yapılabilir. Bu durumun hem teknik hem de iş açısından bazı etkileri olabilir ve her durumda uygulanabilir olmayabilir.
+    
+- Domain modelinde gerçekleşen her şeyin doğru ve eksiksiz bir geçmişi bulunduğunda, iş birimi “ya şöyle olsaydı?” gibi soruları değerlendirebilir. Yani, deneysel iyileştirmelerle hazırlanmış bazı Aggregate’ler üzerinde geçmişteki Event’leri tekrar oynatarak, iş birimi varsayımsal sorulara doğru cevaplar alabilir. Gerçek tarihsel veriyi kullanarak kavramsal senaryoları simüle edebilmek iş açısından faydalı olur mu? Muhtemelen evet. Bu, iş zekasına yaklaşmak için alternatif bir yoldur.
+    
+Peki işletme, bu teknik ve teknik olmayan avantajlardan biri veya birkaçından fayda sağlayabilir mi?
+
+Ek A, Event Sourcing ile Aggregate’lerin nasıl uygulanacağına dair detaylı bilgiler sunar ve CQRS için görünümlerin (views) nasıl yansıtılabileceğini tartışır. Daha fazla detay için [Dahan, CQRS] ve [Nijof, CQRS] kaynaklarına bakılabilir.
+
+## Data Fabric ve Grid Tabanlı Dağıtık Hesaplama
+
+> **<ins>*Kendime Not:*</ins>** 
+> - Data Fabric, dağınık veri kaynaklarını birleşik bir yapı gibi yönetebilmeni sağlayan bir veri mimarisi yaklaşımıdır. Ana amacı, şirket içinde veya bulutta (ya da her ikisinde) yer alan farklı veri kaynaklarına tek bir erişim katmanı sunarak, veriye kolay erişim, entegrasyon, keşif ve yönetişim sağlamaktır.
+> - Data Grid, verinin dağıtık sistemlerde (genellikle bellek içi – in-memory) yüksek erişilebilirlik ve yüksek performans ile saklanmasını sağlayan yapıdır.
+
+Yazılım sistemleri giderek daha karmaşık ve sofistike hale geldikçe; kullanıcı tabanları büyüdükçe ve *“büyük veri”* odaklı gereksinimler arttıkça, geleneksel veritabanı çözümleri performans darboğazı (bottlenecks) haline gelebilir. Devasa boyuttaki bilgi sistemleriyle karşı karşıya kalan organizasyonlar, bu hesaplama zorluklarına eşdeğer çözümler aramaktan başka çare bulamazlar. **Data Fabric (Veri Dokusu)** —bazı durumlarda **Grid Computing (Izgara Hesaplama)** olarak da adlandırılır— bu tür iş senaryolarının talep ettiği yüksek performans ve elastik ölçeklenebilirlik özelliklerini sunar.
+
+Data Fabric’lerin en iyi yönlerinden biri, domain modellerini doğal bir şekilde desteklemeleri ve neredeyse tüm uyumsuzlukları (impedance mismatch) ortadan kaldırmalarıdır. Aslında, bu sistemlerdeki dağıtık önbellek yapıları, hem genel olarak domain nesnelerinin saklanmasını kolaylaştırır hem de özellikle Aggregate Store (Aggregate deposu) işlevi görür.  
+Basitçe ifade etmek gerekirse, bir Aggregate, Fabric’in map tabanlı önbelleğine saklandığında, bu yapıdaki anahtar-değer çiftinin "değer" kısmı olarak yer alır. Anahtar,  Aggregate’in küresel olarak benzersiz kimliğinden (globally unique identity) oluşturulur; Aggregate’in kendisi ise bir ikili (binary) ya da metinsel (textual) temsile dönüştürülerek değer olarak saklanır:
+
+```java
+String key = product.productId().id();
+byte[] value = Serializer.serialize(product); 
+
+// region (GemFire) or cache (Coherence)
+region.put(key, value);
+```
+
+Bu nedenle, teknik açıdan bir domain modeliyle yakından uyumlu özelliklere sahip bir Data Fabric kullanmanın olumlu bir sonucu, geliştirme döngülerinin kısalması olabilir.
+
+Bu bölümde verilen örnekler, bir Data Fabric'in bir domain modelini önbellekte (cache) barındırarak sistemi dağıtık ölçekte nasıl çalıştırabildiğini göstermektedir. Bu bağlamda, CQRS mimari deseni ve Olay Tabanlı Mimari (Event-Driven Architecture)'yi Uzun Süreli İşlemler (Long-Running Processes) ile nasıl destekleyebileceğimize dair yolları inceleyeceğiz.
+
+### Veri Replikasyonu (Data Replication)
+
+Bellek içi (in-memory) bir veri önbelleğini düşündüğümüzde, önbellek herhangi bir şekilde arızalanırsa sistemimizin tüm durumunun veya bir kısmının kaybolma ihtimali hemen aklımıza gelir. Bu, gerçekten dikkate alınması gereken bir durumdur; fakat eğer Fabric yapısında yedeklilik (redundancy) sağlanmışsa, bu durum ciddi bir sorun olmaktan çıkar.
+
+Örneğin, bir **Aggregate başına bir önbellek stratejisi (cache-per-Aggregate strategy)** kullanıldığında Fabric’in sunduğu bellek önbelleğini ele alalım. Bu durumda, belirli bir Aggregate türüne ait Repository (depo), yalnızca ona özel bir önbellek ile desteklenir. Yalnızca tek bir düğümü (node) destekleyen bir önbellek, tek bir hata noktasına karşı oldukça savunmasız olurdu. Ancak, çok düğümlü ve replikasyon destekleyen bir Fabric kullanıldığında bu yapı çok daha güvenilir hale gelir.  
+Hangi düzeyde yedeklilik sağlayacağınızı, aynı anda kaç düğümün arızalanabileceği olasılığına göre seçebilirsiniz — ve sisteme dahil edilen düğüm sayısı arttıkça bu olasılık daralır. Ayrıca, performans ile yedeklilik arasında denge kurma esnekliğine de sahipsiniz; çünkü daha fazla düğüme veri replikasyonu yapmak, Aggregate’in tamamen işlenmesi için gereken süreyi uzatarak performansı etkileyebilir.
+
+Bir önbellek (veya kullanılan Fabric’e bağlı olarak bölge/region) yedeklemesinin nasıl çalışabileceğine dair örnek: bir düğüm, birincil önbellek/bölge (primary) olarak görev yaparken, diğerleri ikincil (secondary) olarak yapılandırılır. Eğer birincil düğüm arızalanırsa, otomatik devralma (fail-over) gerçekleşir ve ikincil düğümlerden biri yeni birincil olur. Arızalanan birincil düğüm tekrar çevrimiçi olduğunda, yeni birincilde depolanan tüm veriler bu düğüme yeniden senkronize edilir ve bu düğüm artık ikincil olarak görev yapar.
+
+Fail-over (otomatik devralma) düğümlerinin bir başka avantajı da şudur, **Fabric içinde yayınlanan olayların (events) garanti teslimatını sağlarlar.** Yani Aggregate’lerde yapılan güncellemeler ve bu güncellemeler sonucunda Fabric’ten yayınlanan herhangi bir olay hiçbir zaman kaybolmaz.  
+İş açısından kritik öneme sahip domain model nesnelerini saklamak için önbellek yedekliliği ve replikasyonu vazgeçilmez özelliklerdir.
+
+### Olay Tabanlı (Event-Driven) Fabrikler ve Domain Event’ler
+
+Bir Fabric’in önemli özelliklerinden biri, olay tabanlı (event-driven) bir yapıyı desteklemesi ve garantili teslimat sağlamasıdır.  Çoğu Fabric, teknik nitelikte yerleşik bir olay sistemine sahiptir. Bu, önbellek düzeyinde ve girdi (entry) düzeyinde meydana gelen olaylara dair otomatik bildirim sağlar. Ancak, bu teknik olaylar Domain Event’lerle karıştırılmamalıdır. Örneğin:
+
+- **Cache-level event**, önbelleğin yeniden başlatılması gibi durumları bildirir.  
+- **Entry-level event**, bir öğenin oluşturulması veya güncellenmesi gibi işlemleri bildirir.
+    
+Yine de, açık mimari destekleyen bir Fabric kullanıyorsanız, Aggregate’lerden doğrudan Domain Event yayınlamak mümkündür. Bu durumda, Domain Event’lerinizin bir framework’ün özel olay sınıfından (örneğin GemFire kullanılıyorsa `EntryEvent`) türetilmesi gerekebilir, ancak bu güçlü yapının sundukları düşünüldüğünde bu oldukça küçük bir bedeldir.
+
+Peki, bir Fabric içinde Domain Event’leri nasıl kullanabilirsiniz? “Domain Events” bölümünde (bölüm 8) ele alındığı gibi, **Aggregate’leriniz basit bir `DomainEventPublisher` bileşeni kullanır**.  Fabric’in önbelleğinde bu publisher, yayınlanan Event’leri belirli bir önbellek/bölge (cache/region) içine koyarak çalışabilir. Bu şekilde önbelleğe alınan Event’ler, ilgili abonelere (listener) eş zamanlı (senkron) ya da eşzamansız (asenkron) olarak iletilir. Tabii ki, bellekte gereksiz yer tüketmemek için:
+
+- Bu Event cache/bölgesi yalnızca olayları geçici olarak saklar
+- Her bir Event, tüm aboneler tarafından başarıyla işlendikten sonra silinir  
+- Bir Event’in tamamen işlenmiş (acknowledged) sayılması için, bir veya daha fazla abone tarafından bir mesaj kuyruğuna (message queue/bus) iletilmiş ya da bir CQRS query modeli güncellenmiş olmalıdır
+    
+Ayrıca, Domain Event aboneleri (subscribers), bu Event’leri başka Aggregate’lerin senkronizasyonu için de kullanabilir.  Bu sayede sistem genelinde eventual consistency (sonunda tutarlılık) mimari düzeyde sağlanmış olur.
+
+### Sürekli Sorgular (Continuous Queries - CQ)
+
+Bazı Fabrikler, **Sürekli Sorgu (Continuous Query)** olarak bilinen bir olay bildirim türünü destekler. Bu özellik, bir istemcinin, **önbellekteki değişiklikleri takip eden ve bu değişikliklerden haberdar olmasını sağlayan bir sorguyu Fabric'e kaydettirmesine** olanak tanır. Sürekli Sorgunun bir kullanım alanı, kullanıcı arayüzü bileşenleridir. Bu bileşenler, geçerli görünümü etkileyebilecek değişiklikler için dinleme yapabilir.
+
+Neyin geldiğini görüyor musun? **CQRS**, **Sürekli Sorgu** özelliğiyle mükemmel bir uyum sağlar, eğer sorgu modeli Fabric içinde tutuluyorsa. Görünüm tablosu güncellemelerini takip etmek yerine, **kayıtlı Sürekli Sorgular** aracılığıyla iletilen bildirimler çözülür, böylece görünümler tam zamanında güncellenebilir. İşte bir istemcinin **GemFire Sürekli Sorgu** olaylarına kaydolmasıyla ilgili bir örnek:
+
+```java
+CqAttributesFactory factory = new CqAttributesFactory(); 
+
+CqListener listener = new BacklogItemWatchListener(); 
+
+factory.addCqListener(listener); 
+
+String continuousQueryName = "BacklogItemWatcher"; 
+
+String query = "select * from /queryModelBacklogItem qmbli where qmbli.status = 'Committed'"; 
+
+CqQuery backlogItemWatcher = queryService.newCq(continuousQueryName, query, factory.create());
+```
+
+Data Fabric, Aggregate değişikliklerine dayalı olarak CQRS sorgu modeli güncellemelerini, CqListener tarafından sağlanan istemci geri çağırma (callback) nesnesine teslim edecektir. Bu güncellemeler, eşleşen kriterler sağlandığında eklenen, güncellenen veya silinen metadataları da içerir.
+
+### Dağıtık İşlem
+
+Bir Data Fabric'in güçlü bir kullanımı, işlemi Fabric'in replikalı önbellekleri arasında dağıtarak ve toplu sonuçları istemciye geri göndererek işlem yapmaktır. Bu, Fabric'in Event-Driven dağıtılmış paralel işlemleri yerine getirmesini sağlar, belki de Long-Running Processes kullanarak.
+
+Bu özelliği açıklığa kavuşturmak için, **GemFire** ve **Coherence**'daki bazı somut yaklaşımlardan bahsetmemiz gerekecek. **Process executive**'ınız bir **GemFire Function** veya bir **Coherence Entry Processor** olarak uygulanabilir. Her ikisi de **Command [Gamma et al.]** işleyicileri olarak hizmet verebilir ve dağıtılmış, replikalı önbellek üzerinde paralel olarak çalışabilir. (Bunun yerine bu kavramı bir **Domain Service** olarak düşünebilirsiniz, ancak yaptığı şey domain'e odaklı olmayabilir.) Tutarlılık sağlamak için bu özelliği **Function** olarak adlandıralım. Bir Function, eşleşen Aggregate örnekleri üzerinde çalışmayı kısıtlamak için isteğe bağlı olarak bir filtre kabul edebilir.
+
+Önceki sunulan **Phone Number Count Process** için bir **Long-Running Process** uygulayan örnek bir Function'a bakalım. Bu işlem, GemFire Function kullanarak replikalı önbellek üzerinde paralel olarak çalıştırılacaktır:
+
+```java
+public class PhoneNumberCountSaga extends FunctionAdapter {
+	@Override 
+	public void execute(FunctionContext context) {
+		Cache cache = CacheFactory.getAnyInstance();
+		QueryService queryService = cache.getQueryService();
+
+		String phoneNumberFilterQuery = (String) context.getArguments();
+		...  
+		// Pseudo code  
+		// - Execute Function to obtain MatchedPhoneNumbersCounted.
+		//   - Send answer to the aggregator by invoking the
+		//     aggregator.sendResult(MatchedPhoneNumbersCounted).
+		// - Execute Function to obtain AllPhoneNumbersCounted.
+		//   - Send answer to the aggregator by invoking the
+		//     aggregator.sendResult(AllPhoneNumbersCounted).
+		// - The aggregator automatically accumulates the answers 
+		//	 from each distributed Function call and returns the 
+		//   single aggregated answer to the client.
+	}
+}
+```
+
+Dağıtılmış replikalı önbellek üzerinde paralel olarak bir Long-Running Process çalıştıracak bir istemci için örnek kod:
+
+```java
+PhoneNumberCountProcess phoneNumberCountProcess = new PhoneNumberCountProcess();
+
+String phoneNumberFilterQuery = "select phoneNumber from /phoneNumberRegion pnr where pnr.areaCode = '303'"; 
+
+Execution execution = FunctionService.onRegion(phoneNumberRegion)
+									.withFilter(0)
+									.withArgs(phoneNumberFilterQuery)
+									.withCollector(new PhoneNumberCountResultCollector()); 
+
+PhoneNumberCountResultCollector resultCollector = execution.execute(phoneNumberCountProcess); 
+
+List allPhoneNumberCountResults = (List) resultsCollector.getResult();
+```
+
+Elbette, süreç çok daha karmaşık veya çok daha basit olabilir. Bu aynı zamanda bir sürecin, mutlaka bir Event-Driven kavramı olmak zorunda olmadığını, bunun yerine diğer eşzamanlı, dağıtılmış işlem yaklaşımlarıyla da çalışabileceğini gösteriyor. Fabric tabanlı dağıtık ve paralel işleme hakkında tam bir tartışma için [GemFire Functions]’a bakılabilir.
+
+## Sonuç
+
+DDD ile kullanılabilecek çeşitli mimari stilleri ve mimari desenleri inceledik. Bu, tam bir liste değildir çünkü çok fazla olasılık vardır ve bu da DDD'nin çok yönlülüğünü vurgular. Örneğin, ***Map-Reduce*** uygulandığında DDD'yi nasıl kullanacağımızı ele almadık. Bu, gelecekteki bir tartışma konusudur.
+
+- Geleneksel Katmanlar Mimarisi’ni ve Dependency Inversion Principle (Bağımlılık Tersine Çevirme İlkesi) kullanarak nasıl geliştirilebileceğini tartıştık.
+    
+- Hexagonal Mimarisi hakkında bilgi edindiniz; bu, uygulama mimarileri için kapsamlı bir stil sağlar.
+    
+-   DDD'nin, SOA ortamında, REST kullanarak ve bir Data Fabric veya Grid Tabanlı Dağıtık Önbellek kullanarak nasıl uygulanması gerektiğini vurguladık.
+    
+-   CQRS hakkında bir genel bakış aldınız ve bunun uygulamanın bazı yönlerini nasıl basitleştirebileceğini öğrendiniz.
+    
+-   Event-Driven’ın çeşitli yönlerini, Pipes and Filters, Long-Running Processes ve hatta Event Sourcing’e kısa bir bakış da dahil olmak üzere inceledik.
+    
+
+Şimdi, DDD taktiksel modelleme konularını ele alacağımız bir dizi bölüme geçiyoruz. Bu bölümler, sahip olduğunuz daha ince detaylı modelleme seçeneklerini görmenize ve bunları en iyi şekilde nasıl kullanacağınızı öğrenmenize yardımcı olacak.
