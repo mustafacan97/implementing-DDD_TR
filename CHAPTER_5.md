@@ -592,4 +592,111 @@ Ekip dikkatlice okumalı ve dinlemeliydi. “Değiştirme” kelimesinin farklı
 
 Peki ya kullanıcıların kiracılık tarafından kontrol edilmesiyle ilgili ifade? Bu, gerçek Entity’nin `Tenant` olduğunu ima etmiyor mu? Bu, *Aggregates (10)* hakkında bir tartışma başlatıyor ki bunu o bölümde ele alacağız. Kısaca cevap, “evet ve hayır.” Evet, bir `Tenant` entity vardır, ancak bu, `User` entity olmadığı anlamına gelmez. Her ikisi de birer **Entity**'dir. Tenant ve User'ın iki farklı **Aggregate**'in kökleri (Roots) olduğunu anlamak için, ilgili bölüme bakabilirsiniz. Evet, hem User hem de Tenant sonuçta Aggregate türleridir, ancak ekip, bu endişelerle ilk başta ilgilenmemeyi tercih etmiştir.
 
-** 236. sayfa
+Her **User**, diğerlerinden açıkça ayırt edilebilecek şekilde benzersiz biçimde tanımlanmalıdır. Ayrıca bir User, zaman içinde değişiklikleri desteklemelidir. Bu nedenle, bir **Entity** olduğuna hiç şüphe yoktur. Bu aşamada, kullanıcının içindeki kişisel bilgileri nasıl modelleyeceğimiz önemli değildir.
+
+---
+
+Ekip, ilk gereksinimin anlamını netleştirmeye biraz zaman ayırmak zorundaydı:
+
+- Kullanıcılar, bir kiracılık (tenancy) ile ilişkili olarak var olur ve onun kontrolü altındadır.
+
+Başlangıçta ekip, bu ifadeyi kullanıcıların kiracılara ait olduğunu belirtecek bir şekilde not alarak ya da cümleyi değiştirerek düzenleyebilirdi, ancak kullanıcıların kiracılar tarafından **sahiplenildiğini**, ama doğrudan onlar tarafından **toplanıp saklanmadığını** (collect and contain) ifade etmek istediler. Ekip dikkatli olmalıydı çünkü çok fazla teknik ya da taktiksel modelleme detaylarına boğulmak istemediler. Bu açıklamaların tüm ekip için anlamlı olması gerekiyordu. Sonunda şu ifadelere ulaştılar:
+
+-   Kiracılar, davet yoluyla birçok kullanıcının kaydına izin verir.
+    
+-   Kiracılar aktif olabilir ya da devre dışı bırakılabilir.
+    
+-   Bir sistemin kullanıcıları kimlik doğrulamalıdır, ancak bu sadece kiracı aktifse mümkündür.
+    
+-   ...
+    
+
+Sürpriz bir şekilde, daha fazla tartışma sonucunda ekip, sadece cümlelerle uğraşmanın ötesine geçerek gereksinimlere çok daha fazla anlam katmayı başardı. Orijinal ifadenin eksik olduğu ortaya çıktı. Gerçekte olan şuydu:
+
+-   Kullanıcılar, yalnızca bir kiracılık altında ve davet ile kayıt olabiliyorlardı.
+    
+-   Ayrıca, kiracının aktif ya da pasif olması durumu da önemliydi. Bir kullanıcı ancak kiracı aktifse kimlik doğrulayabiliyordu.
+
+Bu gereksinimlerin yeniden ifade edilmesi, yeni bir gereksinimin eklenmesi ve bir diğerinin netleştirilmesi; aslında olan bitenin çok daha doğru bir tanımını ortaya koydu.
+
+Bu çaba, kullanıcıların yaşam döngüsünü yöneten şeyin ne olduğuna dair potansiyel yanlış anlamaları ortadan kaldırdı. Ancak şunu net biçimde ortaya koydu: Her kim kullanıcıları “sahipleniyorsa”, bazı kullanıcılar belirli koşullar altında erişilemez hale gelebilir. İşte bu, o an için en önemli senaryolardan biriydi.
+
+Bu noktada ekip, **Ubiquitous Language** (Evrensel Dil) için bir terimler sözlüğünün ilk adımlarını atmış gibiydi. Yine de bu tanımları detaylandırmak için henüz yeterli bilgiye sahip değillerdi. Sözlüğe bir şeyler eklemek için biraz daha beklemeye karar verdiler.
+
+Ancak artık bildikleri birkaç **Entity** vardı (Şekil 5.5’te gösteriliyor). Bir sonraki adımda, bu Entity’lerin nasıl benzersiz olarak tanımlanacağı ve aynı türde birçok nesne arasında bu Entity’leri bulmak için hangi ek özelliklerin gerektiği anlaşılmalıydı.
+
+![Figure 5.5](./images/chapter5/figure-5-5.png)
+
+**Figure 5.5:** 2 Entity, `Tenant` ve `User`, erken keşif sonrasında
+
+Ekip, her **Tenant**’ı benzersiz şekilde tanımlamak için tam bir UUID kullanmaya karar verdi. Bu, kimliğin uygulama tarafından üretildiği bir durumdu. Bu büyük metin değeri yalnızca **benzersizliği garanti ettiği** için değil, aynı zamanda **güvenliği artırdığı** için de kolayca gerekçelendirildi. Çünkü birinin rastgele doğru UUID’yi üretmesi ve gizli verilere erişmesi oldukça zordur. Ekip ayrıca, her Tenant’a ait Entity’lerin birbirinden açıkça ayrılması gerektiğini fark etti. Bu, genellikle barındırılan uygulamalar ve hizmetlerle çalışan, birbirleriyle rekabet halinde olan işletmelerin güvenlik kaygılarını karşılamak amacıyla belirtilen bir gereksinimdi. Dolayısıyla, sistemdeki her Entity, bu benzersiz kimlikle etiketlenecek ve her sorgu bu kimliği içermek zorunda olacaktı.
+
+UUID bir Entity midir? Hayır. Bu benzersiz tenant kimliği bir **Entity değil**, bir **Value** (Değer).  
+Peki, bu değerin özel bir türü (specialized type) olmalı mı, yoksa sadece bir `String` olarak mı kalmalı?
+
+Kimlik üzerinde ***Side-Effect-Free Functions (6)*** ihtiyaç yoktu. Bu sadece büyük bir sayının onaltılık (hex) metin temsiliydi. Ancak bu kimlik çok geniş bir alanda kullanılacağı için, güçlü tip kullanımı avantajlı olabilirdi. Ekip bir `TenantId` isimli **Value Object** tanımlayarak, **her aboneye ait Entity’nin doğru kimlikle etiketlendiğinden emin olmak** istedi.
+
+> 🎯 Bu yaklaşım, **type-safety (tip güvenliği)** sayesinde modelin sağlamlığını artırır.
+
+Tenant, **adlandırılmalıydı**. Bu ad, özel bir davranış içermediği için sadece bir `String` olabilir. Ad, sorgularda çözümleme yapmak için yardımcı olurdu. Örneğin bir destek görevlisi, yardım sağlamak için önce tenant’ı adıyla bulmak zorunda kalabilir. Bu nedenle ad, **gerekli bir özellik** ve aynı zamanda bir **"intrinsic characteristic"** yani "doğasında var olan, ayırt edici bir özelliktir". Tenant adına özgünlük (unique) kısıtı eklenebilir; ama bu şimdilik kritik bir detay değil.
+
+Her abonelikle birlikte aşağıdaki gibi başka özellikler de olabilir:
+-   Destek sözleşmesi ve çağrı PIN’i
+-   Fatura ve ödeme bilgileri
+-   İşletme konumu ve müşteri iletişim kişileri
+
+Ancak bunlar güvenlik kapsamına girmez; bunlar daha çok iş süreçleri ile ilgilidir. Bu nedenle bu bilgileri *Identity and Access Context* içinde modellemek uygunsuz olur. Destek, faturalama ve müşteri ilişkileri gibi konular ayrı *Bounded Context*’lerde ele alınmalıdır.
+
+![Figure 5.6](./images/chapter5/figure-5-6.png)
+
+**Figure 5.6:** Bir *Entity* keşfedilip adlandırıldıktan sonra, onu benzersiz bir şekilde tanımlayan ve bulunmasını sağlayan nitelikleri/özellikleri ortaya çıkarın.
+
+### Destek Süreci ve Bounded Context Ayrımı
+
+**Destek (Support)**, farklı bir Context içinde yönetilecektir. Yazılım, önce tenant'ı adıyla bulduktan sonra, o tenant’ın **benzersiz TenantId**’sini kullanacaktır. Bu kimlik sayesinde örneğin, Destek (Support) Context'ine, Faturalama (Billing) Context'ine, Müşteri İlişkileri Yönetimi (CRM) Context'ine erişim sağlanabilir.
+
+> 🎯 Bu Context ayrımı, Domain-Driven Design’da **Bounded Context**'lerin sınırlarını doğru çizmek açısından önemlidir.
+
+Tenant’a ait destek sözleşmeleri, işletme konumu, ve müşteri iletişim bilgileri, doğrudan güvenlikle ilgili değildir. Ancak, tenant’a ait adın sistemde yer alması, destek ekiplerinin hızlıca yardımcı olabilmesi açısından yine de faydalıdır.  **Bu nedenle ad, Tenant nesnesinin içinde olmalıdır.**
+
+Ekip, Tenant’ın temelini tamamladıktan sonra, **User Entity’sine** yöneldi.  Soru şuydu: **Kullanıcının benzersiz kimliği ne olmalı?** Çoğu kimlik sistemi, **benzersiz bir kullanıcı adı** (username) kullanılmasını destekler. Kullanıcı adının ne içerdiği önemli değildir; **tenant içinde benzersiz** olması yeterlidir. **Tenant’lar arasında benzersiz olmasına gerek yoktur.** Kullanıcılar, kendi kullanıcı adlarını belirleyebilir. Eğer abone olan işletmenin kullanıcı adıyla ilgili kuralları varsa ya da adlar dış sistemlerle entegre (federated security) şekilde belirleniyorsa, bu durumda kullanıcıların bu kurallara uyması beklenir.
+
+> Bu doğrultuda, ekip `User` sınıfına basitçe bir `username` özelliği tanımladı.
+
+Bir gereksinime göre, bir **security credential** (güvenlik kimlik bilgisi) bulunmalıdır. Bu da aslında bir **paroladır**. Ekip bu tanımı temel alarak `User` sınıfına bir `password` özelliği ekledi.   Ancak çok önemli bir kural vardı:
+
+> **Parola asla açık metin (clear text) olarak saklanmayacak.**
+
+Bu yüzden, parolaların **şifrelenerek saklanması** gerekiyordu. Bu da ekipte şu düşünceyi doğurdu:   Bu işlemi yapacak bir yapı gerekli. O halde bu iş için bir **Domain Service** tanımlanmalı.
+
+> 🔐 Bu servis, her parola kullanıcıya atanırken onu şifreleyecek.
+
+Bu noktada, **Ubiquitous Language** için bir **terimler sözlüğü** hazırlanmaya başlandı. Şimdilik sınırlı ama yararlıydı:
+
+-   **Tenant**: Kimlik ve erişim hizmetlerinin (ve diğer çevrimiçi hizmetlerin) abonesi olan adlandırılmış organizasyon. Kullanıcı kaydını davet yoluyla sağlar.
+    
+-   **User**: Tenant’a ait, kişisel adı ve iletişim bilgileri olan, kayıtlı bir güvenlik öznesidir. Kendine özgü bir kullanıcı adına ve şifrelenmiş bir parolaya sahiptir.
+    
+-   **Encryption Service**: Açık metin olarak saklanmaması gereken parola ve diğer verileri şifreleme imkanı sağlar.
+    
+Son bir soru daha vardı: **Parola, kullanıcı kimliğinin bir parçası sayılmalı mı?** Sonuçta parola, kullanıcıyı bulmak için kullanılıyor olabilir. Eğer öyle olsaydı, `username` ve `password` birlikte tek bir yapı haline getirilip `SecurityPrincipal` gibi bir **Whole Value Object** haline getirilebilirdi. Bu, kavramı çok daha açık ve anlamlı yapardı. Ancak bu fikir önemli bir gereksinimi gözden kaçırır:
+
+-   Parolalar değiştirilebilir.
+    
+-   Bazı durumlarda, sisteme parola sağlanmadan da kullanıcıyı bulmak gerekebilir.  
+    (Örneğin, bir kullanıcının bir Role'e sahip olup olmadığını kontrol etmek için.)
+    
+
+Bu tür işlemler **kimlik doğrulama (authentication)** değil, **yetkilendirme (authorization)** için yapılır. Bu durumda, her sorguda parola istenmesi anlamsız olurdu. **Sonuç: Parola, kimlik değildir.**  
+Ancak, kimlik doğrulama sırasında `username` ve `password` birlikte kullanılabilir.
+
+`SecurityPrincipal` adında bir **Value Object** oluşturma fikri, modelleme açısından **olumlu ve istenen bir öneri** olarak ortaya çıktı. Bu fikir, ileride yeniden değerlendirilmek üzere not edildi. Ayrıca, üzerinde henüz durulmayan başka kavramlar da vardı. Örneğin:
+
+-   Kullanıcı kayıt davetlerinin nasıl sağlanacağı,
+    
+-   Kişisel ad ve iletişim bilgilerine dair detaylar.
+    
+
+Bu konuların, bir sonraki hızlı yineleme (iteration) sırasında ele alınacağı belirtildi.
+
+** 239. sayfa
