@@ -699,4 +699,315 @@ Ancak, kimlik doğrulama sırasında `username` ve `password` birlikte kullanıl
 
 Bu konuların, bir sonraki hızlı yineleme (iteration) sırasında ele alınacağı belirtildi.
 
-** 239. sayfa
+### Temel Davranışları Ortaya Çıkarmak
+
+Temel nitelikler belirlendikten sonra, ekip artık olmazsa olmaz davranışları araştırmaya başlayabildi…
+
+> Ekip, kendilerine verilen temel gereksinimlere yeniden göz attıktan sonra, artık **Tenant** ve **User** varlıklarının davranışlarını keşfetmeye yöneldi:
+>
+> - Kiracılar aktif hale getirilebilir veya devre dışı bırakılabilir.
+    
+
+----------
+
+Bir **Tenant’ın aktif ya da pasif hale getirilmesi** konusu düşünüldüğünde, çoğumuzun aklına büyük ihtimalle **Boolean bir toggle** (aç/kapa anahtarı) gelir. Bu doğru olsa da, nasıl uygulandığı bu noktada önemli değildir.
+
+Eğer `active` niteliğini, class diagramındaki Tenant’ın "attributes" bölümüne ekleseydik, bu okuyucuya gerçekten anlamlı bir şey anlatır mıydı? Örneğin, `Tenant.java` sınıfında aşağıdaki gibi bir alan tanımı ne kadar açıklayıcı olurdu?
+
+```java
+public class Tenant extends Entity {
+    ...
+    private boolean active;
+    ...
+
+```
+
+Muhtemelen tam olarak değil. Üstelik, başlangıçta yalnızca kimlik tanımlamaya ve sorgulamalarda eşleşmeye yardımcı olan niteliklere odaklanmak istiyoruz. Bu tür destekleyici ayrıntıları sonradan eklemek daha doğrudur.
+
+---
+
+Ekip, `setActive(boolean)` gibi bir metot tanımlamayı da düşünebilirdi. Ancak bu da gereksinimin dilini tam olarak yansıtmazdı. Genel amaçlı “setter” metotlarının tamamen uygunsuz olduğu söylenemez, ancak bunlar yalnızca **Ubiquitous Language** tarafından destekleniyorsa ve **bir isteği yerine getirmek için birden fazla setter kullanılması gerekmiyorsa** tercih edilmelidir.  
+Çünkü birden fazla setter kullanmak amacın ne olduğunu belirsiz hale getirir. Aslında tek bir anlamlı **Domain Event** (Alan Olayı) yayımlanması gereken durumlarda işin doğasını karmaşıklaştırır.
+
+Ekip, domain uzmanlarının bu durumlardan bahsederken "aktif hale getirme" ve "devre dışı bırakma" terimlerini kullandığını fark etti. Bu terimleri korumak adına, modelde `activate()` ve `deactivate()` gibi özel işlemler tanımlamaya karar verdiler.
+
+Aşağıdaki kod parçası, niyeti açıkça belirten bir arayüz (Intention Revealing Interface) örneğidir [Evans] ve ekibin giderek şekillenen Ubiquitous Language’iyle uyumludur:
+
+```java
+public class Tenant extends Entity {
+	...
+	public void activate() {
+		// TODO: implement 
+	}
+	public void deactivate() {
+		// TODO: implement
+	} 
+	...
+}
+```
+
+Fikirlerini canlandırmak için ekip ilk olarak yeni davranışları kullanmanın nasıl bir his olduğunu görmek için bir test geliştirdi:
+
+```java
+public class TenantTest ... {
+	public void testActivateDeactivate() throws Exception {
+		Tenant tenant = this.tenantFixture();
+		assertTrue(tenant.isActive());
+
+		tenant.deactivate();
+		assertFalse(tenant.isActive());
+
+		tenant.activate();
+		assertTrue(tenant.isActive());
+	}
+}
+```
+
+Bu testin ardından ekip, arayüzün kalitesi konusunda kendine güven duymaya başladı.  
+Testi yazmak onlara başka bir metodun daha eksik olduğunu fark ettirdi: `isActive()` metodu.  
+Böylece **üç yeni metoda** karar verdiler (bkz. Şekil 5.7):
+
+- `activate()`
+- `deactivate()`
+- `isActive()`   
+
+Ayrıca Ubiquitous Language sözlüğü de genişletildi:
+
+- **Activate tenant:** Bu işlemle bir kiracıyı aktif hale getirmeyi sağlar ve geçerli durumu doğrulamak mümkündür.
+    
+- **Deactivate tenant:** Bu işlemle kiracı devre dışı bırakılır. Kiracı devre dışı durumdayken kullanıcılar kimlik doğrulaması yapamaz.
+    
+- **AuthenticationService:** Kullanıcıların kimlik doğrulamasını koordine eder; önce, kullanıcıya ait olan kiracının aktif olup olmadığını kontrol eder.
+    
+![Figure 5.7](./images/chapter5/figure-5-7.png)
+
+**Figure 5.7:** Vazgeçilmez davranışlar ilk hızlı iterasyon sırasında `Tenant`'a atanır. Bazı davranışlar karmaşıklık nedeniyle atlanmıştır ancak yakında eklenebilir.
+
+Bu son maddeyle birlikte yeni bir **Domain Service** daha keşfedilmiş oldu.  
+
+Bir kullanıcıyı eşleştirmeye çalışmadan önce, sistemin önce `Tenant.isActive()` durumunu kontrol etmesi gerekir. Bu anlayış, aşağıdaki gereksinim üzerine düşünülürken ortaya çıktı:
+
+- Sistemin kullanıcıları kimlik doğrulamasından geçmelidir, ancak yalnızca kiracının aktif olması durumunda bu gerçekleşebilir.
+
+Kimlik doğrulama işlemi sadece doğru `username` ve `password` ile eşleşmekten ibaret değildir;  
+daha üst seviye bir koordinasyon gereklidir.  İşte bu noktada Domain Service yapıları oldukça faydalı olur. Detaylar daha sonra eklenebilir. Şimdilik önemli olan, ekibin `AuthenticationService` adını yakalayıp Ubiquitous Language'e dahil etmiş olmasıdır. **Test-first yaklaşımının** gerçekten işe yaradığı bir durum oldu bu.
+
+Ekip ayrıca şu gereksinimi de gözden geçirdi:
+
+-   **Kiracılar, birçok kullanıcının davet yoluyla kayıt olmasına izin verir.**
+
+Bu maddeyi dikkatlice analiz etmeye başladıklarında, bunun ilk hızlı iterasyona göre biraz daha karmaşık olduğunu fark ettiler.  Bu işin içinde belli ki bir **Invitation (Davet)** nesnesi vardı. Fakat elimizdeki gereksinim bu konuda yeterli bilgi vermediği için, davranışın nasıl yönetileceği de net değildi. Bu nedenle ekip, bu konuyu modellemeyi ileri bir zamana erteledi. İlk etapta daha fazla geri bildirim almayı planladılar — erken dönem domain uzmanları ve müşterilerden. Yine de, bir metot tanımlamayı ihmal etmediler:
+
+-   `registerUser()`  
+    
+Bu metot, **User nesnelerinin oluşturulması** açısından temel bir işlevdir (bkz. ilgili bölüm: **_“Construction”_**).
+
+Son olarak ekip, tekrar `User` sınıfına döndü ve aşağıdaki gereksinimleri ele aldı:
+
+-   **Kullanıcılar kişisel bilgilere sahiptir**, buna ad ve iletişim bilgileri dahildir.
+    
+-   **Kişisel bilgiler**, kullanıcıların kendileri ya da bir yönetici tarafından **değiştirilebilir.**
+    
+-   **Kullanıcıların güvenlik bilgileri (şifreleri)** değiştirilebilir.
+
+**"User"** ile birlikte, iki yaygın güvenlik deseni olan **"Fundamental Identity"** birlikte uygulandı.  
+“**Personal**” teriminin kullanılması, Kullanıcı ile birlikte bir **kişisel bilgi** kavramının da geldiğini açıkça gösteriyordu. Ekip, önceki açıklamalara dayanarak bu yapının **composition (bileşim)** ve **behavior (davranış)** ortaya koydu.
+
+`Person`, `User` sınıfına fazla sorumluluk yüklenmemesi için ayrı bir sınıf olarak modellendi.   "**Personal**" kelimesinden yola çıkarak, ekip Ubiquitous Language’e şu tanımı ekledi:
+
+-   **Person (Kişi):** Kullanıcıya ait kişisel verileri içerir ve yönetir. Buna isim ve iletişim bilgileri dahildir.
+
+Peki, `Person` bir Entity mi, yoksa Value Object mi? Burada da **"değişim" (change)** kelimesi belirleyici oldu.   Bir kişinin sadece iş telefon numarası değiştiğinde, tüm `Person` nesnesini değiştirmek gereksiz görünüyordu. Bu nedenle ekip, `Person`'ı bir **Entity (Varlık)** olarak modellemeye karar verdi. `Person`, içinde iki Value Object tutar:
+
+-   `Name`
+-   `ContactInformation`
+
+Bu kavramlar şu an için biraz belirsizdi, ama ileride **refactor** edilmesi gerektiği de açıktı.
+
+Kullanıcının kişisel ismi ve iletişim bilgilerinde yapılacak değişikliklerin nasıl yönetileceği konusu, daha fazla tartışmaya yol açtı. Örneğin, İstemciler (clients), `User` içindeki `Person` nesnesine doğrudan erişmeli mi? Bir geliştirici şunu sorguladı:
+
+> “Her `User` gerçekten bir kişi midir? Ya bir dış sistem olursa?”
+
+Bu şu anki sistemde geçerli olmasa da, ileride karşılaşılabilecek olası ihtiyaçlara karşı doğru bir endişeydi. Eğer istemciler `User`’ın yapısına doğrudan erişir ve `Person` üzerinden davranışları tetiklemeye başlarsa, gelecekte yapılacak değişikliklerde istemcilerin de **refactor** edilmesi gerekebilir.
+
+Bunun yerine, eğer bu kişisel davranışları doğrudan `User` üzerinde modellenseler, yani daha **genelleştirilmiş bir “security principal”** (güvenlik öznesi) kavramı olarak ele alsalar,  
+bu gibi zincirleme değişikliklerin (ripple effect) önüne geçilebilir. Ekip bu fikri test etmek için örnek testler yazdı ve bu yaklaşımın doğru olduğuna karar verdi. Sonuç olarak `User`, Şekil 5.8’de gösterildiği şekilde modellendi.
+
+
+![Figure 5.8](./images/chapter5/figure-5-8.png)
+
+**Figure 5.8:** Kullanıcı'nın temel davranışı daha fazla ilişkilendirmeyi ortaya çıkarır. Ekip, aşırı spesifik olmadan, işlemlerle birlikte birkaç nesne daha modelledi.
+
+Başka değerlendirmeler de vardı. Ekip, `Person` nesnesi dışa açılmalı mı, yoksa tüm istemcilerden tamamen gizlenmeli mi? sorusunu tartıştı. Şimdilik, `Person`’ın sadece bilgi sorgulama amacıyla dışa açık bırakılmasına karar verildi. İleride, bu accessor (erişim sağlayıcı), bir **Principal arayüzü** sunacak şekilde yeniden tasarlanabilir. Bu durumda `Person` ve `System`, bu arayüzü uygulayan **özelleşmiş Principal** sınıfları olabilir. Ekip, anlayışları derinleştikçe bu yapıyı **refactor edebilecekti.**
+
+Tempolarını bozmadan çalışan ekip, sıradaki gereksinimin ortaya koyduğu Ubiquitous Language ifadesini hemen fark etti:
+
+> • Kullanıcının güvenlik bilgileri (parola) değiştirilebilir.
+
+Bu gereksinime karşılık olarak, `User` sınıfına bir `changePassword()` davranışı tanımlandı. Bu, gereksinimlerde geçen terimi doğrudan yansıtır ve alan uzmanlarını (domain experts) memnun eder.
+
+> Şifre, şifrelenmiş olsa bile, hiçbir zaman istemcilere gösterilmez.
+
+Parola bir kez `User` üzerine atanırsa, artık **Aggregate sınırlarının dışına çıkarılmaz.** Kimlik doğrulamak isteyen herhangi bir bileşen, **yalnızca** `AuthenticationService` üzerinden işlem yapabilir.
+
+🎯 Ayrıca ekip, sistemde **değişikliğe neden olan tüm davranışların**, başarıyla tamamlandığında **spesifik bir Domain Event** (Alan Olayı) yayınlaması gerektiğine karar verdi. Bu düzeyde detaylar, ilk iterasyonda ele almak istedikleri şeyler değildi, ama **olayların gerekliliğini** fark etmiş oldular.  
+**Olaylar (Events)** en az iki önemli işe yarayacaktı:
+
+1.  Tüm nesnelerin yaşam döngüsü boyunca yapılan değişikliklerin izlenmesini sağlamak. (Bu konu ileride detaylandırılıyor.)
+    
+2.  Harici abonelerin bu değişikliklere senkronize olmasına imkân tanımak.  Böylece dış sistemler, bu sayede **kendi içlerinde bağımsız (autonomous)** kalabilirlerdi.
+
+---
+
+Bu konular, kitabın **“Events” (Bölüm 8)** ve **“Integrating Bounded Contexts” (Bölüm 13)** başlıklarında daha detaylı olarak ele alınacaktır.
+
+### Roller ve Sorumluluklar
+
+Modelleme sürecinin bir yönü, nesnelerin oynadığı rolleri ve üstlendikleri sorumlulukları keşfetmektir. Rol ve sorumluluk analizi, genel olarak domain nesnelerine uygulanabilir bir yaklaşımdır. Ancak burada, özellikle Entity (Varlık) nesnelerinin rollerine ve sorumluluklarına odaklanıyoruz.
+
+"Rol" terimi için biraz bağlama ihtiyacımız var. Örneğin, **Kimlik ve Erişim (Identity and Access) Bağlamı** tartışılırken, bir _Role (Rol)_ terimi:
+
+-   Sistemdeki genel bir güvenlik endişesini temsil eden bir **Entity** ve **Aggregate Root** olarak ele alınır.
+    
+-   İstemciler (client'lar), bir kullanıcının belirli bir güvenlik rolünde olup olmadığını sorgulayabilir.
+    
+**Yani burada sözü edilen "Role", kullanıcının bir _security role_ oynayıp oynamadığıyla ilgilidir.** Ancak şu an tartıştığımız konu tamamen farklıdır. Bu bölümdeki "rol" kavramı; sistemdeki nesnelerin (objelerin), modelde nasıl roller oynadığıyla ilgilidir.
+
+Tabii! İşte metnin Türkçe çevirisi:
+
+***Domain Nesnelerinin Birden Fazla Rol Üstlenmesi***
+
+Nesne yönelimli programlamada genellikle, bir sınıfın **oynadığı rol**, **uyguladığı (implement ettiği) arabirimler (interfaces)** tarafından belirlenir. Doğru şekilde tasarlanmışsa, bir sınıf her bir interface için tek bir rol oynar. Eğer sınıf açıkça tanımlanmış hiçbir interface uygulamıyorsa (yani herhangi bir interface implement etmiyorsa), varsayılan olarak kendi sınıfının rolünü oynar. Başka bir deyişle, böyle bir sınıf, **public metotlarının oluşturduğu örtük (implicit) bir arayüz** sunar. Önceki örneklerdeki `User` sınıfı, herhangi bir açık interface uygulamamasına rağmen, tek bir rol oynar: User.
+
+Şimdi şöyle bir senaryoyu varsayalım, **tek bir nesnenin hem "User" hem de "Person" rollerini oynamasını istiyoruz.** (Bu doğrudan önerilmiyor, ama şimdilik böyle bir fikri değerlendirdiğimizi varsayalım.) Eğer bunu yaparsak, artık `User` nesnesinin içinde ayrı bir `Person` nesnesine ihtiyaç kalmaz. Bunun yerine, iki rolü birden oynayan tek bir nesne olur.
+
+Peki neden böyle bir şey yapmak isteyelim? Genellikle bunun nedeni, iki veya daha fazla nesne arasında hem benzerlikler hem de farklar görmemizdir. Bu örtüşen özellikleri tek bir nesne üzerinden birden fazla interface aracılığıyla modellemek mümkün olabilir. Örneğin, tek bir nesne hem **User** hem de **Person** olabilir ve bu sınıfa şöyle bir isim verilebilir: **`HumanUser`**
+
+```java
+public interface User {
+	...
+}
+public interface Person {
+	...
+}
+public class HumanUser implements User, Person {
+	...
+}
+```
+
+Elbette! İşte bu bölümün Türkçe çevirisi:
+
+----------
+
+Bu mantıklı mı? Belki. Ancak işleri karmaşık hale getirme ihtimali de var. Eğer her iki arayüz de karmaşıksa, bunların ikisini birden tek bir nesnede (object) uygulamak oldukça zor olabilir. Ayrıca, Kullanıcı (User), bir sistem de olabilir. Bu durumda gerekli arayüz sayısı üçe çıkar: User, Person ve System. **User, Person ve System rollerini aynı anda oynayacak tek bir nesne tasarlamak**, işleri daha da zorlaştırabilir. Belki bunu daha **genel amaçlı bir “Principal” (Yetkili/Temsilci) sınıfı oluşturarak** sadeleştirebiliriz:
+
+```java
+public interface User {
+	...
+}
+public interface Principal {
+	...
+}
+public class UserPrincipal implements User, Principal {
+	...
+}
+```
+
+Bu tasarımla, **gerçek "principal" (yetkili/temsilci) tipini çalışma zamanında (runtime) belirlemeye çalışıyoruz** — yani geç bağlama (late binding) yaklaşımı. **Bir kişi (person) temsilcisi ile bir sistem (system) temsilcisinin farklı uygulamaları vardır.** Sistemler, kişilerin sahip olduğu türde iletişim bilgilerine ihtiyaç duymaz. Yine de bunu denemek isteyebiliriz, **Yönlendirme (forwarding delegation) kullanan bir uygulama tasarlayarak.** Bunu yapmak için, çalışma zamanında hangi türün mevcut olduğunu kontrol ederiz ve mevcut olan nesneye yönlendirme (delegate etme) yaparız:
+
+```java
+public interface User {
+	...
+}
+
+public interface Principal {
+	public Name principalName();
+	...
+}
+
+public class PersonPrincipal implements Principal {
+	...
+}
+
+public class SystemPrincipal implements Principal {
+	...
+}
+
+public class UserPrincipal implements User, Principal {
+	private Principal personPrincipal;
+	private Principal systemPrincipal;
+	... 
+
+	public Name principalName() {
+		if (personPrincipal != null) {
+			return personPrincipal.principalName();
+		} else if (systemPrincipal != null) {
+			return systemPrincipal.principalName();
+		} else {
+			throw new IllegalStateException("The principal is unknown.");
+		}
+	}
+	... 
+}
+```
+
+Bu tasarım çeşitli sorunlar doğurur. Bunlardan biri, **nesne şizofrenisi (object schizophrenia)** (Tıbbi olarak şizofreninin tanımı olmayan çoklu kişiliğe sahip bir nesneyi tanımlar. Kafa karıştırıcı ismin ardındaki asıl sorun nesne kimliği karmaşasıdır) olarak bilinen durumdur. Davranış, _forwarding_ (yönlendirme) veya _dispatching_ (iletime) olarak bilinen bir teknikle başka nesnelere devredilir.   Ancak `personPrincipal` ya da `systemPrincipal`, davranışın aslında çağrıldığı `UserPrincipal` Entity’sinin kimliğini taşımaz. Nesne şizofrenisi, bu delege edilen nesnelerin, onları çağıran (orijinal) nesnenin kimliğinden habersiz olduğu durumu tanımlar. Delege edilen nesnelerin içinde bir tür "ben kimim?" karmaşası yaşanır. Bu demek değildir ki, somut sınıflardaki her delege metodu ana nesnenin kimliğini almak zorunda. Ama bazı metotlar gerçekten buna ihtiyaç duyabilir. Bu durumda `UserPrincipal` referansını parametre olarak geçebiliriz — fakat bu da tasarımı karmaşıklaştırır  ve aslında `Principal` arayüzünün değişmesini gerektirir. Bu hiç iyi değil. [Gamma ve arkadaşları]nın da söylediği gibi:
+
+> “Delegasyon yalnızca basitleştirdiği yerde iyi bir tasarım seçimidir; karmaşıklaştırdığı yerde değil.”
+
+Bu noktada bu modelleme zorluğunu çözmeye çalışmayacağız. Amaç, nesne rollerinin nasıl zorluklar yaratabileceğini göstermek ve bu modelleme stilini dikkatli kullanmamız gerektiğini vurgulamaktır. **Qi4j** [Öberg] gibi doğru araçlarla bu durumu iyileştirmek mümkün olabilir.
+
+Durumu iyileştirmek için, **rol arayüzlerini daha ince taneli (fine-grained) hale getirmek** faydalı olabilir —  bu da **Udi Dahan**'ın [Dahan, Roles] önerdiği bir yaklaşımdır. Aşağıdaki iki gereksinim, bize daha ince taneli arayüzler yaratma imkânı verir:
+
+- Bir müşteriye yeni sipariş ekleyin.
+    
+- Bir müşteriyi “tercihli müşteri (preferred)” yapın.  _(Bu seviyeye ulaşma koşulu belirtilmemiştir.)_
+
+`Customer` sınıfı, iki **fine-grained rol arayüzünü** uygular: `IAddOrdersToCustomer` ve `IMakeCustomerPreferred`. Bu arayüzlerin her biri yalnızca tek bir işlemi tanımlar — Şekil 5.9’da görüldüğü gibi. Hatta `IValidator` gibi başka arayüzler de uygulanabilir.
+
+Aggregate'ler bölümünde (Bölüm 10) tartışıldığı üzere, normalde bir `Customer` nesnesi üzerine  
+çok sayıda nesne (örneğin tüm `Order`’lar) toplanmaz. Bu yüzden bunu salt bir örnek, sadece nesne rollerinin nasıl kullanılabileceğini göstermek amacıyla oluşturulmuş yapay bir örnek olarak görelim.
+
+![Figure 5.9](./images/chapter5/figure-5-9.png)
+
+**Figure 5.9:** C#.NET adlandırma kurallarını kullanan `Customer` Entity, `IAddOrdersToCustomer` ve `IMakeCustomerPreferred` olmak üzere iki nesne rolü uygular.
+
+Arayüz isimlerinde kullanılan “`I`” öneki, .NET programlamada yaygın bir stil olarak bilinir. .NET yaklaşımını genel olarak takip etmenin yanı sıra, bazıları bunun okunabilirliği artırdığını da düşünür:  
+
+- “I add orders to customer” (Müşteriye sipariş eklerim)  
+  
+- “I make customer preferred” (Müşteriyi tercihli yaparım) gibi.
+
+“`I`” öneki olmadan, geriye fiil-temelli şu tür isimler kalır: `AddOrdersToCustomer`, `MakeCustomerPreferred` — ki bunlar daha az tercih edilebilir olabilir. Genelde arayüzleri **isim (noun)** ya da **sıfat (adjective)** olarak adlandırmaya alışkınız; bu standart burada da elbette uygulanabilir.
+
+Bu stilin bazı avantajlarını düşünelim: **Bir Entity'nin rolü kullanım senaryosuna (use case) göre değişebilir.** Bir istemci (client), bir `Customer` nesnesine yeni bir `Order` örneği eklemek istediğinde üstlendiği rol, aynı müşteriyi “tercihli” yapmak istediğindeki rolden farklıdır. Buna ek olarak, teknik bir avantaj da vardır: **Farklı kullanım senaryoları, farklı veri çekme stratejileri (fetching strategies) gerektirebilir.**
+
+```java
+IMakeCustomerPreferred customer = session.Get<IMakeCustomerPreferred>(customerId); 
+customer.MakePreferred(); 
+
+...
+
+IAddOrdersToCustomer customer = session.Get<IAddOrdersToCustomer>(customerId); 
+customer.AddOrder(order);
+```
+
+Kalıcılık (persistence) mekanizması, `Get<T>()` metodunun parametreleştirilmiş tip adı olan `T`’yi sorgular. Bu tür (type) kullanılarak, altyapıya önceden kayıtlı olan ilgili **veri çekme stratejisi (fetching strategy)** bulunur. Eğer arayüz için özel bir çekme stratejisi tanımlı değilse, **varsayılan strateji** kullanılır. Bu çekme stratejisi çalıştırıldığında, `Customer` nesnesi **belirli kullanım senaryosunun ihtiyaç duyduğu şekliyle** yüklenir.
+
+Bu yaklaşımın teknik faydalarından biri şudur:  **Rol işaretleyici arayüzler (role marker interfaces)**, sahne arkasında bazı özel kancaların (hooks) çalışmasına yardımcı olabilir. Örneğin, her role özel bazı doğrulama işlemleri, o role karşılık gelen arayüzle ilişkilendirilerek yapılabilir. Böylece bir Entity kalıcı hale getirilirken (persist edilirken), o role özel bir `validator` çalıştırılabilir.
+
+İnce taneli (fine-grained) arayüzler, `Customer` gibi sınıfların davranışları kendileri içinde uygulamalarını kolaylaştırır. Yani, davranışların ayrı sınıflara delege edilmesine gerek kalmaz.  
+Bu da nesne şizofrenisini (object schizophrenia) önlemeye yardımcı olur.
+
+Şu soruyu sormak yerinde olur: **Customer davranışlarını role göre ayırmanın domain modellemede gerçekten bir avantajı var mı?** Örneğin, önceki `Customer` ile Şekil 5.10’daki `Customer` karşılaştırıldığında, biri diğerinden daha mı iyidir? Bir istemcinin yanlışlıkla `AddOrder()` metodunu çağırıp aslında `MakePreferred()` çağırması gerektiğini fark edememesi ne kadar olası?  
+Muhtemelen çok değil. Ancak bu yaklaşımı yalnızca bu kıyasla yargılamak doğru olmaz.
+
+![Figure 5.10](./images/chapter5/figure-5-10.png)
+
+**Figure 5.10:** Burada `Customer`, daha önce farklı arayüzlerde bulunan işlemlerin artık Entity sınıfının tek bir arayüzünde toplanmasıyla modellenmiştir.
+
+**Belki de rol arayüzlerinin en pratik kullanımı en basit olanıdır:** İstemcilere sızmasını istemediğimiz uygulama detaylarını gizlemek için arayüzlerden faydalanabiliriz. Yani, bir arayüzü yalnızca istemcilerin kullanmasını istediğimiz işlevleri açığa çıkaracak şekilde tasarlarız, ve başka hiçbir şeyi göstermeyiz. Uygulama sınıfı (`Customer` gibi), arayüzden çok daha karmaşık olabilir. Her türlü destekleyici property’leri, getter/setter’ları ve yalnızca model içindeki davranışları olabilir — ama istemciler bunları asla göremez. Mesela, bir araç veya framework bizi istemediğimiz halde bazı `public` metodlar yazmaya zorluyor olabilir. Ancak bu metodlar, **domain model arayüzünü etkilemez**. Yani teknik detayların alan modeline bulaşmasının önüne geçilmiş olur — bu da **doğrudan domain modelleme açısından bir avantajdır.**
+
+Her tasarım tercihinde olduğu gibi burada da şunu unutmamak gerekir: **Teknik tercihlerden önce her zaman Ubiquitous Language (herkesin ortak dili) geçerli olmalıdır.** Çünkü DDD yaklaşımında en önemli şey, iş alanını (business domain) en doğru şekilde modellemektir.
+
+**248. sayfa
