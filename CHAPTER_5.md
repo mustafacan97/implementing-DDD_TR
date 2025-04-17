@@ -1125,7 +1125,7 @@ public final class EmailAddress {
 	...
 	private void setAddress(String anAddress) {
 		if (anAddress == null) {
-            throw new IllegalArgumentException("The address may not be set to null.");
+			throw new IllegalArgumentException("The address may not be set to null.");
 		}
 		if (anAddress.length() == 0) {
 			throw new IllegalArgumentException("The email address is required."); 
