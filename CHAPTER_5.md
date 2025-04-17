@@ -1010,4 +1010,371 @@ Muhtemelen çok değil. Ancak bu yaklaşımı yalnızca bu kıyasla yargılamak 
 
 Her tasarım tercihinde olduğu gibi burada da şunu unutmamak gerekir: **Teknik tercihlerden önce her zaman Ubiquitous Language (herkesin ortak dili) geçerli olmalıdır.** Çünkü DDD yaklaşımında en önemli şey, iş alanını (business domain) en doğru şekilde modellemektir.
 
-**248. sayfa
+### Oluşturma (Construction)
+
+Bir Entity’yi yeni oluşturduğumuzda, onun kimliğini (identity) tam olarak belirleyecek ve istemcilerin (clients) onu bulmasını sağlayacak **yeterli durumu (state)** yakalayan bir **yapıcı (constructor)** kullanmak isteriz. Eğer kimlik (identity) erken oluşturuluyorsa, doğru tasarlanmış bir constructor en azından bu **benzersiz kimliği (unique identity)** parametre olarak almalıdır. Eğer Entity, başka yollarla — örneğin isim veya açıklama üzerinden — sorgulanabiliyorsa, o zaman bu bilgiler de constructor'a parametre olarak eklenmelidir.
+
+Bazen bir Entity, bir veya birden fazla **invariant (değişmez durum)** korur. **Invariant**, Entity’nin yaşam döngüsü boyunca **transaksiyonel (transactionally) olarak tutarlı** kalması gereken bir durumdur.
+
+> - Invariant'lar genellikle **Aggregate**'lerin sorumluluğudur.  
+> 
+> - Ancak her Aggregate Root, bir Entity olduğundan burada bahsi geçmektedir.
+
+Eğer bir Entity’nin invariant’ı, içinde bulunan bir nesnenin `null` olmaması gibi bir duruma bağlıysa ya da başka durumlara göre hesaplanıyorsa, bu **gerekli durumlar**, constructor tarafından sağlanmalıdır.
+
+***Örnek Senaryo:*** Her `User` nesnesi şu alanları **mutlaka içermelidir**:
+
+-   `tenantId`
+-   `username`
+-   `password`
+-   `person`
+    
+
+Başka bir deyişle, `User` nesnesi başarıyla oluşturulduktan sonra, bu instance değişkenlerine yapılacak tüm başvurular **asla `null` olmamalıdır.** Bu nedenle `User`’ın yapıcısı (constructor) ve/veya ilgili `setter` metodları bu zorunlu alanları mutlaka sağlamak zorundadır.
+
+```java
+public class User extends Entity {
+	...
+	protected User(TenantId aTenantId, String aUsername, String aPassword, Person aPerson) { 
+		this();
+		this.setPassword(aPassword);
+		this.setPerson(aPerson);
+		this.setTenantId(aTenantId);
+		this.setUsername(aUsername);
+		this.initialize();
+	}
+	...
+	protected void setPassword(String aPassword) { 
+		if (aPassword == null) {
+			throw new IllegalArgumentException("The password may not be set to null."); 
+		}
+		this.password = aPassword;
+    } 
+
+	 protected void setPerson(Person aPerson) {
+		if (aPerson == null) {
+			throw new IllegalArgumentException("The person may not be set to null.");
+		}
+		this.person = aPerson;
+	} 
+
+	protected void setTenantId(TenantId aTenantId) {
+		if (aTenantId == null) {
+			throw new IllegalArgumentException("The tenantId may not be set to null.");
+		}
+		this.tenantId = aTenantId;
+	}
+
+	protected void setUsername(String aUsername) {
+		if (this.username != null) {
+			throw new IllegalStateException("The username may not be changed."); 
+		}
+		if (aUsername == null) {
+			throw new IllegalArgumentException("The username may not be set to null.");
+		}
+		this.username = aUsername;
+	}
+	... 
+}
+```
+
+Tabii, işte çevirisi:
+
+**User sınıfının tasarımı, öz-enkapsülasyonun (self-encapsulation) gücünü göstermektedir.** Constructor (yapıcı metot), örnek değişkenlerin atanmasını, bu değişkenler için kendi içsel özellik/özellik ayarlayıcılarına (attribute/property setters) devreder. Bu ayarlayıcılar, değişkenler için öz-enkapsülasyon sağlar. Öz-enkapsülasyon, her bir setter’ın, belirli bir durumu ayarlarken uygun sözleşme koşullarını belirlemesine olanak tanır. Her bir setter, Entity adına null olmayan bir değer sağlandığını garanti eder; bu, nesne sözleşmesini (instance contract) zorunlu kılar. Bu tür doğrulamalar "guard" olarak adlandırılır (bkz. “Validation” bölümü). Daha önce “Identity Stability” bölümünde belirtildiği gibi, bu setter metodlarının öz-enkapsülasyon teknikleri gerektiğinde daha karmaşık olabilir.
+
+**Karmaşık Entity nesnelerinin yaratımı için bir Factory kullanın.** Bu konu, Factories (Bölüm 11)'de daha ayrıntılı ele alınmaktadır. Yukarıdaki örnekte, **User constructor’ının protected erişime sahip olduğunu fark ettiniz mi?** `Tenant` Entity'si, `User` örneklerini oluşturmak için bir Factory görevi görür ve yalnızca aynı Modül içerisindeki sınıflar `User` constructor’ını görebilir. Bu sayede `Tenant` dışındaki hiçbir nesne doğrudan `User` oluşturamaz.
+
+```java
+public class Tenant extends Entity  {
+	... 
+	public User registerUser(String aUsername, String aPassword, Person aPerson) { 
+		aPerson.setTenantId(this.tenantId());
+		User user = new User( this.tenantId(), aUsername, aPassword, aPerson);
+		return user;
+	}
+	...
+}
+```
+
+Burada `registerUser()` metodu bir **Factory** (üretim metodu) olarak görev yapmaktadır. Bu Factory, `User` nesnesinin varsayılan durumunun oluşturulmasını basitleştirir ve hem `User` hem de `Person` Entity’leri için `TenantId`’nin her zaman doğru olmasını garanti eder. Tüm bunlar, Ubiquitous Language’e (Ortak Dil’e) uygun şekilde tasarlanmış bir Factory metodu kontrolünde gerçekleşir.
+
+### Doğrulama (Validation)
+
+Modelde doğrulama kullanmanın başlıca nedenleri; tek bir özellik/alanın, tüm bir nesnenin veya nesneler bileşiminin doğruluğunu kontrol etmektir. Modelde üç düzeyde doğrulama ele alınmaktadır. Her ne kadar doğrulama yapmak için özel framework’ler veya kütüphaneler bulunsa da, burada bunlar ele alınmaz. Onun yerine, daha genel amaçlı yaklaşımlar sunulur; fakat bu yaklaşımlar zamanla daha gelişmiş yapılara dönüşebilir.
+
+Doğrulama farklı şeyleri sağlar. Bir domain nesnesine ait tüm alanlar tek tek geçerli olsa bile, bu nesnenin tamamının geçerli olduğu anlamına gelmez. Belki iki doğru alanın birleşimi, nesnenin bütününü geçersiz kılabilir. Aynı şekilde, tek bir nesne bütünüyle geçerli olabilir; ancak geçerli olan iki nesnenin birleşimi, tüm bileşimi geçersiz hale getirebilir. Bu nedenle, tüm olasılıkları ele alabilmek için bir veya daha fazla doğrulama düzeyi kullanmamız gerekebilir.
+
+***Özellik/Alan Doğrulaması (Validating Attributes/Properties)***
+
+Tek bir alanı ya da özelliği (bu ikisi arasındaki fark için bkz. _Value Objects_ (6)) geçersiz bir değere karşı nasıl koruyabiliriz? Bu bölümde ve kitabın başka yerlerinde tartışıldığı gibi, kendini kapsülleme (self-encapsulation) kullanımını şiddetle tavsiye ediyorum. Kendini kapsülleme, bu ilk çözümü kolaylaştırır.
+
+*Martin Fowler’ın sözleriyle: “Kendini kapsülleme, sınıflarınızı öyle tasarlamaktır ki, veriye erişim – aynı sınıf içinde bile olsa – her zaman erişim (accessor) metotları üzerinden gerçekleşir.” [Fowler, _Self Encap_]* Bu teknik çeşitli avantajlar sunar. Nesnenin örnek (ve sınıf/statik) değişkenlerini soyutlama imkânı tanır. Nesnenin sahip olduğu diğer niteliklerden yola çıkarak özellik/alanlar türetmeyi kolaylaştırır. Ve özellikle bu bağlamda, basit bir doğrulama türünü desteklemiş olur.
+
+Aslında, doğru nesne durumunu korumak amacıyla kendini kapsülleme kullanımına doğrudan "doğrulama" demekten pek hoşlanmıyorum. Bu terim bazı geliştiricilerde olumsuz çağrışım yaratabilir, çünkü doğrulama başlı başına ayrı bir sorumluluktur ve bir domain nesnesi yerine bir doğrulama sınıfına ait olmalıdır. Bu görüşe katılıyorum. Yine de burada biraz farklı bir şeyden söz ediyorum: Tasarım sözleşmesine (design-by-contract) dayanan bazı ön kabulleri (assertion) uygulamaktan bahsediyorum.
+
+Tanım olarak, tasarım sözleşmesi yaklaşımı, tasarladığımız bileşenlerin ön koşullarını, son koşullarını ve değişmez (invariant) durumlarını tanımlamamıza olanak sağlar. Bu yaklaşım Bertrand Meyer tarafından savunulmuştur ve Eiffel adlı programlama dilinde detaylı bir şekilde ifade edilmiştir. Java ve C# dillerinde kısmi destekleri mevcuttur ve bu konuda yazılmış _Design Patterns and Contracts_ [Jezequel ve diğ.] adlı bir kitap da vardır. Burada yalnızca ön koşullara (preconditions) odaklanıyor ve bunu bir doğrulama biçimi olarak koruma mekanizmaları (guard) ile uyguluyoruz:
+
+```java
+public final class EmailAddress {
+	private String address; 
+
+	public EmailAddress(String anAddress) {
+		super();
+		this.setAddress(anAddress);
+	}
+	...
+	private void setAddress(String anAddress) {
+		if (anAddress == null) {
+            throw new IllegalArgumentException("The address may not be set to null.");
+		}
+		if (anAddress.length() == 0) {
+			throw new IllegalArgumentException("The email address is required."); 
+		}
+		if (anAddress.length() > 100) {
+			throw new IllegalArgumentException("Email address must be 100 characters or less.");
+		}
+		if (!java.util.regex.Pattern.matches("\\w+([-+.']\\w+)*@\\w+([-.]\\w+)*\\.\\w+([-.]\\w+)*", anAddress)) {
+			throw new IllegalArgumentException("Email address and/or its format is invalid.");
+		}
+		this.address = anAddress;
+	}
+	... 
+}
+```
+
+`setAddress()` metodunun sözleşmesinde dört adet ön koşul (precondition) vardır. Bu ön koşul korumalarının (guard) hepsi, `anAddress` parametresi üzerinde bir durumu doğrular:
+
+-   **Parametre null olamaz.**
+    
+-   **Parametre boş bir string olamaz.**
+    
+-   **Parametre 100 karakteri geçemez (sıfır karakter de olamaz).**
+    
+-   **Parametre, temel bir e-posta adresi biçimiyle eşleşmelidir.**
+    
+Eğer bu ön koşulların hepsi sağlanırsa, `address` özelliği `anAddress` değerine atanır. Eğer bu koşullardan biri karşılanmazsa, `IllegalArgumentException` fırlatılır.
+
+`EmailAddress` sınıfı bir **Entity** değildir. Bu bir **Value Object**'tir. Burada kullanılmasının birkaç nedeni var. Öncelikle, null kontrolünden başlayarak değer formatına kadar çeşitli ön koşul korumalarının uygulanmasına iyi bir örnek teşkil eder (buna ileride daha fazla değinilecektir). İkinci olarak, bu değer (`Value`), Person Entity'si tarafından bir özelliği olarak tutulur, dolaylı olarak `ContactInformation` Value nesnesi aracılığıyla. Yani, aslında, bu Entity'nin bir parçasıdır; tıpkı bir Entity sınıfında doğrudan tanımlanmış basit bir özelliğin parçası olması gibi.
+
+Entity içindeki basit niteliklerin setter metotlarını yazarken kullandığımız ön koşul korumalarının aynısı, burada da kullanılır. Bir Whole Value (örneğin `ContactInformation`) bir Entity özelliğine atandığında, içindeki daha küçük değerlerin koruma altında olması şarttır, aksi takdirde geçersiz bir durumun oluşması engellenemez.
+
+Bazı geliştiriciler, bu tür ön koşul kontrollerini **defansif programlama (defensive programming)** olarak adlandırır. Gerçekten de, modelinize tamamen geçersiz değerlerin girmesini engellemek, defansif programlamanın bir örneğidir. Bazı kişiler, bu tür korumaların artan ayrıntı düzeyi konusunda hemfikir olmayabilir. Bazı defansif programcılar, null kontrolü yapmayı kabul eder, hatta belki boş string’leri kontrol etmeyi de kabul eder, ancak string uzunluğu, sayısal aralıklar, değer formatları gibi koşulları kontrol etmekten kaçınabilirler.
+
+Örneğin bazıları, değer uzunluğu kontrollerinin veritabanına bırakılması gerektiğini düşünür. Maksimum string uzunluğu gibi kuralların model nesnelerinin değil, başka katmanların sorumluluğunda olduğunu savunurlar. Yine de, bu tür **ön koşullar akıl sağlığı kontrolleri (sanity checks)** olarak kabul edilebilir.
+
+Bazen **string uzunluklarını kontrol etmek gereksiz olabilir.** Örneğin, maksimum NVARCHAR sütun boyutuna asla ulaşılamayan bir veritabanı kullanıyorsanız bu mantıklı olabilir. **Microsoft SQL Server**'da, metin sütunları `max` anahtar kelimesiyle tanımlanabilir:
+
+```sql
+CREATE TABLE PERSON (
+	...
+	CONTACT_INFORMATION_EMAIL_ADDRESS_ADDRESS
+		NVARCHAR(max) NOT NULL, 
+	...
+) ON PRIMARY 
+GO
+```
+
+Elbette hiçbir zaman bir e-posta adresinin **1.073.741.822 karakter uzunluğunda** olmasını istemeyiz. Amaç sadece, **asla aşılmayacak bir sütun genişliği** tanımlayarak bu konuda endişelenmeye gerek kalmamasını sağlamaktır.
+
+Bu her veritabanında mümkün olmayabilir. **MySQL'de maksimum satır genişliği 65.535 bayttır.** Tekrar edelim, bu **sütun** genişliği değil, **satır** genişliğidir. Eğer 65.535 karakterlik bir `VARCHAR` sütunu tanımlarsak, tabloda başka bir sütun için yer kalmaz. Bir tabloda tanımlı `VARCHAR` sütun sayısına bağlı olarak, her sütunun genişliğini **tüm sütunların sığabileceği pratik bir sınır** dahilinde tutmak gerekir. Böyle durumlarda, karakter sütunlarını `TEXT` olarak tanımlayabiliriz; çünkü `TEXT` ve `BLOB` sütunlar **ayrı segmentlerde saklanır.** Yani veritabanına bağlı olarak, **sütun genişliği sınırlamaları etrafından dolaşmak** ve modelde string uzunluğu kontrollerine olan ihtiyacı azaltmak mümkün olabilir.
+
+Ancak bir sütunun taşma ihtimali varsa, modelde basit bir **string uzunluğu kontrolü** yapılması yerinde olur. Aşağıdaki gibi bir hatayı **anlamlı bir domain hatasına dönüştürmenin ne kadar zor olacağını** düşünün:
+
+`ORA-01401: inserted value too large for column`
+
+Hangi sütunun taştığını bile anlayamayabiliriz. Bu tür sorunları en baştan önlemek, setter metodunda metin uzunluğu kontrolleri yapmakla mümkün olabilir. Ayrıca, bu uzunluk kontrolü sadece veritabanı kısıtlamaları için değil, domain'in kendisinin getirdiği kurallar için de geçerli olabilir. Örneğin, entegre olunan bir eski sistemin metin uzunluklarıyla ilgili belirli sınırları olabilir.
+
+Ayrıca **sayılar için yüksek-düşük aralık kontrolleri** ve başka kontroller de gerekebilir. Hatta basit bir **format kontrolü** — örneğin e-posta adresi formatı gibi — bile, **tamamen saçma bir değerin bir Entity ile ilişkilendirilmesini önlemek** için mantıklıdır. **Bir Entity'nin temel değerleri sağlıklıysa**, daha büyük ölçekte (nesne düzeyinde veya nesne bileşimlerinde) yapılacak doğrulamalar da kolaylaşır.
+
+***Tüm Nesnelerin Doğrulanması (Validating Whole Objects)***
+
+Bir Entity'nin tüm özellikleri veya alanları geçerli olsa bile, bu durum Entity’nin tamamının geçerli olduğu anlamına gelmez. Tüm bir Entity’yi doğrulamak için, nesnenin tüm durumuna — yani sahip olduğu tüm alanlara — erişim gerekir. Ayrıca bu doğrulama için bir **Specification** [Evans & Fowler, Spec] veya **Strategy** [Gamma et al.] desenine ihtiyaç duyulur.
+
+Ward Cunningham, **Checks (Kontroller)** adlı pattern dilinde çeşitli doğrulama yaklaşımlarını ele alır. Bunlardan biri olan **Deferred Validation (Ertelenmiş Doğrulama)**, tüm nesnelerin doğrulanması için yararlı bir yaklaşımdır. Ward bu durumu şöyle tanımlar: "**Mümkün olan en son ana kadar ertelenmesi gereken kontroller sınıfı.**" Bunun nedeni, bu tür doğrulamaların genellikle en az bir karmaşık nesne (veya nesne bileşimi) üzerinde çalıştırılmasıdır. Bu yüzden **Deferred Validation** konusunu, nesne bileşimlerini ele alırken daha sonra yeniden tartışacağız. Bu alt bölümde, Ward’un “daha basit işlemlerin kontrolleri” olarak adlandırdığı doğrulamalarla sınırlı kalıyoruz.
+
+Bir Entity’nin **tüm durumu** doğrulama sırasında erişilebilir olmalıdır. Bu nedenle bazı geliştiriciler, bu aşamanın, doğrulama mantığının doğrudan Entity içine gömülmesi için uygun bir zaman olduğunu düşünebilir. Ancak burada dikkatli olunmalıdır. Çünkü çoğu zaman bir domain nesnesinin doğrulama kuralları, nesnenin kendisinden daha sık değişir. Doğrulama mantığını Entity içine yerleştirmek, ona fazla sorumluluk yükler. Zaten Entity, durumunu yönetirken domain davranışını da üstlenmiş durumdadır. Bu yüzden, doğrulama sorumluluğunu Entity’den ayırmak daha sağlıklı olur. **Doğrulama bileşeninin sorumluluğu**, Entity'nin durumunun geçerli olup olmadığını belirlemektir. Java kullanılarak ayrı bir doğrulama sınıfı tasarlanırken, bu sınıf Entity ile **aynı modülde (pakette)** yer almalıdır. Java varsayımıyla, alanlara erişim sağlayan getter'lar en azından `protected` ya da `package-private` olmalı, `public` da kabul edilebilir. Ancak `private` erişim, doğrulama sınıfının gerekli durumu okumasına engel olur. Eğer doğrulama sınıfı Entity ile aynı modülde değilse, tüm alan erişimlerinin `public` olması gerekir ki bu da çoğu durumda **istenmeyen bir durumdur**.
+
+Doğrulama sınıfı, **Specification** veya **Strategy** desenlerinden birini uygulayabilir. Eğer geçersiz bir durum tespit edilirse, bu durumu ya doğrudan istemciye bildirir ya da sonradan gözden geçirilebilmesi için bir **kayıt** tutar (örneğin bir batch işlemi sonrasında). Burada önemli olan, doğrulama sürecinin ilk hatada istisna fırlatmak yerine, tüm hata setini toplamasıdır.
+
+Aşağıda, bu amaçla tasarlanmış yeniden kullanılabilir soyut bir doğrulayıcı sınıf ve onun somut bir alt sınıfı örnek olarak sunulacaktır:
+
+```java
+public abstract class Validator {
+	private ValidationNotificationHandler notificationHandler;
+	...
+	public Validator(ValidationNotificationHandler aHandler) {
+		super();
+		this.setNotificationHandler(aHandler);
+	}
+
+	public abstract void validate(); 
+
+	protected ValidationNotificationHandler notificationHandler() {
+		return this.notificationHandler;
+	}
+
+	private void setNotificationHandler(ValidationNotificationHandler aHandler) {
+		this.notificationHandler = aHandler;
+	}
+}
+```
+
+```java
+public class WarbleValidator extends Validator {
+	private Warble warble; 
+
+	public Validator(Warble aWarble, ValidationNotificationHandler aHandler) {
+		super(aHandler);
+		this.setWarble(aWarble);
+	}
+	...
+	public void validate() {
+		if (this.hasWarpedWarbleCondition(this.warble())) {
+			this.notificationHandler().handleError("The warble is warped."); 
+		}
+		if (this.hasWackyWarbleState(this.warble())) {
+			this.notificationHandler().handleError("The warble has a wacky state.");
+		}
+	}
+	...
+}
+```
+
+`WarbleValidator`, bir `ValidationNotificationHandler` ile örneklenir (instantiate edilir). Geçersiz bir durumla karşılaşıldığında, `ValidationNotificationHandler` bu durumu yönetmekle görevlendirilir. `ValidationNotificationHandler`, bir `handleError()` metoduna sahip genel amaçlı bir implementasyondur ve bu metot bir `String` bildirim mesajı alır. Ancak, bunun yerine **her tür geçersiz durum için farklı metodlara sahip özel implementasyonlar** da oluşturabiliriz.
+
+```java
+class WarbleValidator extends Validator {
+	...
+	public void validate() {
+		if (this.hasWarpedWarbleCondition(this.warble())) {
+			this.notificationHandler().handleWarpedWarble();
+		}
+		if (this.hasWackyWarbleState(this.warble())) {
+			this.notificationHandler().handleWackyWarbleState();
+		}
+	}
+	... 
+}
+```
+
+Bu yaklaşımın avantajı, hata mesajlarını, mesaj anahtarlarını ya da bildirime özgü herhangi bir şeyi doğrulama (validation) sürecine bağlamamasıdır. Daha da iyisi, bildirim işlemini doğrudan `check` metodunun içine yerleştirmektir.
+
+```java
+class WarbleValidator extends Validator {
+	... 
+
+	public Validator(Warble aWarble, ValidationNotificationHandler aHandler) {
+		super(aHandler);
+		this.setWarble(aWarble);
+	}
+	...
+	public void validate() {
+		this.checkForWarpedWarbleCondition();
+		this.checkForWackyWarbleState();
+		...
+	}
+    ...
+    protected checkForWarpedWarbleCondition() {
+		if (this.warble()...) {
+			this.warbleNotificationHandler().handleWarpedWarble();
+		} 
+	}
+	...
+    protected WarbleValidationNotificationHandler warbleNotificationHandler() {
+		return (WarbleValidationNotificationHandler) this.notificationHandler();
+} }
+```
+
+Bu örnekte, `Warble`’a özel bir `ValidationNotificationHandler` kullanıyoruz. Bu nesne, standart bir tür olarak gelir ama **içeride kullanılırken özel türe (cast) edilir**. Modelin, kendisiyle istemciler (clients) arasında doğru türde nesnenin sağlanmasını garanti edecek bir **sözleşmeyi (contract) kurması** gerekir. 
+
+Peki, **istemciler bir Entity'nin doğrulamasının gerçekleşmesini nasıl garanti eder**? Ve doğrulama işlemi **nerede başlar**?
+
+Bunun bir yolu, doğrulama gerektiren tüm Entity'lere bir `validate()` metodu koymak ve bunu **bir "Layer Supertype" (Katman Süper Tipi)** aracılığıyla yapmaktır:
+
+```java
+public abstract class Entity extends IdentifiedDomainObject {
+	public Entity() {
+        super();
+	}
+	
+	public void validate(ValidationNotificationHandler aHandler) {
+	} 
+}
+```
+
+Herhangi bir **Entity alt sınıfı (subclass)** için `validate()` metodunun çağrılması güvenlidir. Eğer somut (concrete) Entity sınıfı özel bir doğrulama (validation) destekliyorsa, bu doğrulama çalıştırılır. Desteklemiyorsa, davranış hiçbir işlem yapmamak (no-op) olur. Eğer yalnızca bazı Entity’ler doğrulama yapıyorsa, `validate()` metodunu sadece doğrulamaya ihtiyaç duyan Entity’lerde tanımlamak daha iyi olabilir.
+
+Peki, Entity'ler gerçekten kendilerini mi doğrulamalı? 
+
+Bir `validate()` metoduna sahip olmak, Entity’nin doğrudan kendini doğruladığı anlamına gelmez.  
+Ancak bu, Entity’nin **kendisini hangi bileşenin doğrulayacağını belirlemesine** olanak tanır ve bu da **doğrulama sorumluluğunu istemciden alır**:
+
+```java
+public class Warble extends Entity {
+	...
+	@Override
+	public void validate(ValidationNotificationHandler aHandler) {
+		(new  WarbleValidator(this, aHandler)).validate();
+	} 
+	... 
+}
+```
+
+Her bir uzmanlaşmış `Validator` alt sınıfı, gerektiği kadar ayrıntılı doğrulamalar (fine-grained validations) yapar. Entity, nasıl doğrulandığı hakkında hiçbir şey bilmek zorunda değildir; sadece doğrulanabilir olduğunu bilmesi yeterlidir. Ayrı bir Validator alt sınıfı, doğrulama sürecinin Entity'den bağımsız olarak farklı bir hızda değişmesine olanak tanır ve karmaşık doğrulamalarının tam anlamıyla test edilmesini sağlar.
+
+***Nesne Kompozisyonlarını Doğrulamak***
+
+Ward Cunningham'ın deyimiyle “daha basit faaliyetlerin tüm kontrollerini ve daha fazlasını gerektiren daha karmaşık eylemler” için **Deferred Validation** kullanabiliriz. Burada sadece bir **Entity**'nin geçerli olup olmadığını değil, aynı zamanda birden fazla **Entity**'nin, hatta bir veya daha fazla **Aggregate** örneğinin birlikte geçerli olup olmadığını da belirleriz. Bunu yapmak için, uygun sayıda örnekle somut **Validator** alt sınıfını başlatabiliriz. Ancak bu tür doğrulamayı yönetmek için bir **Domain Service** kullanmak daha iyi olabilir. Domain Service, doğrulamak için gereken Aggregate örneklerini okumak amacıyla Repositories kullanabilir. Ardından, her bir örneği tek tek veya diğerleriyle birlikte işleme alabilir.
+
+Doğrulamanın her zaman uygun olup olmadığını karar verin. Bazen bir Aggregate veya bir dizi Aggregate, geçici bir ara durumda olabilir. Belki de bunun göstergesi olarak bir Aggregate'te bir durum modeli oluşturabiliriz ve bu durum, doğrulamanın uygunsuz zamanlarda yapılmasını engeller. Doğrulama için koşullar uygun olduğunda, model Domain Event yayınlayarak istemcilere bilgi verebilir.
+
+```java
+public class SomeApplicationService ... {
+	...
+	public void doWarbleUseCaseTask(...) {
+		Warble warble = this.warbleRepository.warbleOfId(aWarbleId);
+		DomainEventPublisher
+			.instance()
+			.subscribe(new DomainEventSubscriber<WarbleTransitioned>(){
+                public void handleEvent(DomainEvent aDomainEvent) {
+					ValidationNotificationHandler handler = ...;
+                    warble.validate(handler);
+                    ...
+				}
+				public Class<WarbleTransitioned> subscribedToEventType() {
+					return WarbleTransitioned.class;
+				}
+			});
+
+		warble.performSomeMajorTransitioningBehavior();
+	}
+}
+```
+
+İstemci tarafından alındığında, `WarbleTransitioned` doğrulamanın artık uygun olduğunu belirtir. O zamana kadar istemci doğrulamadan kaçınır.
+
+### Değişiklik İzleme (change Tracking)
+
+Entity tanımına göre, bir Entity'nin yaşamı boyunca gerçekleşen değişiklikleri izlemek zorunlu değildir. Sadece sürekli değişen durumunu desteklememiz yeterlidir. Ancak bazen alan uzmanları, zaman içinde modeldeki önemli olaylara ilgi gösterebilirler. Bu durum söz konusu olduğunda, Entity'lerdeki belirli değişiklikleri izlemek faydalı olabilir.
+
+Doğru ve faydalı bir değişiklik izleme sağlamak için en pratik yol **Domain Events** ve bir **Event Store** kullanmaktır. Alan uzmanlarının önem verdiği her Aggregate üzerinde gerçekleştirilen önemli durum değiştiren komutlar için benzersiz bir Event türü oluştururuz. Event adı ve özelliklerinin birleşimi, değişiklik kaydını belirgin hale getirir. Olaylar, komut metotları tamamlandıkça yayımlanır. Bir aboneler modeli tarafından üretilen her olayı almak için kaydolur. Alındığında, abone Olayı Event Store'a kaydeder.
+
+Alan uzmanları modeldeki her değişiklikle ilgilenmeyebilir, ancak teknik ekip yine de ilgilenebilir. Bu genellikle teknik nedenlerle yapılan bir işlemdir ve buna **Event Sourcing** adı verilen bir desen kullanılır (bkz. bölüm 4).
+
+## Sonuç
+
+Entity ile ilgili konuları kapsamlı bir şekilde ele aldık. İşte öğrendiklerinize bir özet:
+
+- Entity'lerin benzersiz kimliklerini oluşturmanın dört ana yolunu incelediniz. 
+
+- Kimliklerin oluşturulma zamanlamasının önemini ve nasıl **surrogate identity** (vekâlet kimliği) kullanacağınızı anladınız.
+
+- Kimliklerin istikrarını nasıl sağladığınızı öğrendiniz. 
+
+- Entity'lerin içsel özelliklerini **Ubiquitous Language** kullanarak bağlamda nasıl keşfettiğimizi tartıştık. Hem özelliklerin hem de davranışların nasıl keşfedildiğini gördünüz. 
+
+- Temel davranışların yanı sıra, Entity modellemelerinde birden fazla rol kullanmanın güçlü ve zayıf yönlerini incelediniz. 
+
+- Son olarak, Entity'leri nasıl inşa edeceğinizi, nasıl doğrulama yapacağınızı ve gerektiğinde değişikliklerini nasıl izleyeceğinizi ayrıntılı olarak incelediniz.
+
+Sonraki bölümde, taktiksel modelleme araçları arasında çok önemli bir yapı taşı olan **Value Objects** üzerine odaklanacağız.
